@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ECE441 Lab 4 Report</title>
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 17mm 20mm 17mm;
+    @bottom-center { content: counter(page); font: 9pt Cambria, Georgia, serif; color: #555; }
+  }
+  :root { --ink: #1b1b1f; --muted: #5a5a63; --rule: #c9c9d0; --accent: #1f4e79; --tint: #f2f5f9; }
+  * { box-sizing: border-box; }
+  body { font: 10.5pt/1.42 Cambria, Georgia, "Times New Roman", serif; color: var(--ink); margin: 0; background: #fff; }
+  h1 { font: 700 19pt/1.2 "Segoe UI", Calibri, sans-serif; color: var(--accent); margin: 0 0 4pt; }
+  .authors { font: 600 10.5pt "Segoe UI", Calibri, sans-serif; color: var(--ink); margin: 0 0 2pt; }
+  .subtitle { font: 10pt "Segoe UI", Calibri, sans-serif; color: var(--muted); margin: 0 0 10pt; padding-bottom: 8pt; border-bottom: 1.5pt solid var(--accent); }
+  h2 { font: 700 13.5pt "Segoe UI", Calibri, sans-serif; color: var(--accent); margin: 16pt 0 5pt; break-after: avoid; }
+  h3 { font: 700 11pt "Segoe UI", Calibri, sans-serif; margin: 11pt 0 3pt; break-after: avoid; }
+  p { margin: 0 0 6pt; text-align: justify; hyphens: auto; }
+  ul, ol { margin: 0 0 6pt 16pt; padding: 0; }
+  li { margin-bottom: 2pt; }
+  figure { margin: 8pt 0 10pt; break-inside: avoid; }
+  figure.narrow img { max-width: 70%; margin: 0 auto; }
+  figcaption { font: 9pt/1.35 "Segoe UI", Calibri, sans-serif; color: var(--muted); margin-top: 3pt; }
+  figcaption b { color: var(--ink); }
+  img { display: block; max-width: 100%; height: auto; }
+  table { border-collapse: collapse; width: 100%; font: 8.6pt/1.3 "Segoe UI", Calibri, sans-serif; margin: 4pt 0 2pt; }
+  th, td { padding: 2.5pt 5pt; text-align: left; border-bottom: .5pt solid var(--rule); vertical-align: top; }
+  th { background: var(--tint); border-top: 1pt solid var(--accent); border-bottom: 1pt solid var(--accent); font-weight: 600; }
+  th.grp { text-align: center; border-left: 1pt solid #fff; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  td.sig { background: #fff1c9; font-weight: 700; }
+  .corr { color: var(--muted); font-weight: 400; }
+  tr.foot td { color: var(--muted); border-top: 1pt solid var(--rule); }
+  table.quality { width: 78%; }
+  .tablewrap { break-inside: avoid; margin: 6pt 0 10pt; }
+  .cap { font: 9pt/1.35 "Segoe UI", Calibri, sans-serif; color: var(--muted); margin-top: 2pt; text-align: left; }
+  .cap b { color: var(--ink); }
+  .box { border-left: 3pt solid var(--accent); background: var(--tint); padding: 5pt 9pt; margin: 6pt 0 8pt; break-inside: avoid; }
+  .box p { margin: 0 0 3pt; text-align: left; }
+  .box p:last-child { margin: 0; }
+  .demo { border: 1.5pt solid #c62828; color: #c62828; background: #fdecea; padding: 6pt 9pt; margin: 0 0 10pt; font: 600 10pt "Segoe UI", Calibri, sans-serif; }
+  .eq { text-align: center; margin: 4pt 0 8pt; font-style: italic; }
+  code, pre { font-family: Consolas, "Cascadia Mono", monospace; }
+  code { font-size: 9.2pt; }
+  pre { font-size: 7.2pt; line-height: 1.25; background: #fafafa; border: .5pt solid var(--rule); padding: 6pt 8pt; white-space: pre-wrap; word-break: break-word; margin: 4pt 0; }
+  .refs p { text-align: left; padding-left: 14pt; text-indent: -14pt; font-size: 9.8pt; }
+  .pagebreak { break-before: page; }
+</style>
+</head>
+<body>
+
+{{BANNER}}
+<h1>Event-Related Potentials to Targets and Non-Targets, Tested with a Cluster-Based Permutation Test</h1>
+<!-- GROUP MEMBERS: replace the two [ ... ] entries with your name and student number, then run report/build_report.py -->
+<p class="authors">Laurence Yang (1010500520) &middot; [Member 2 name] ([student number]) &middot; [Member 3 name] ([student number])</p>
+<p class="subtitle">ECE441 &middot; Lab 4 report &middot; two runs of the oddball video, recordings <code>{{runs.run1.recording}}</code> and <code>{{runs.run2.recording}}</code></p>
+
+<h2>1. Introduction</h2>
+<p>One group member watched a video in which a red circle or a blue square appeared every 1.2 s, 90 times in total, and pressed a pushbutton as fast as possible whenever a red circle appeared while ignoring the squares. Only 15 of the 90 stimuli are circles, so the task is a visual <i>oddball</i> paradigm: rare, task-relevant targets among frequent non-targets. Both stimulus types should evoke early visual responses (P1/N1, roughly 100&ndash;200 ms) over the occipital cortex; rare targets that require a decision and a response are known to evoke, in addition, a late positivity, the P300, which is largest over the centro-parietal midline 300&ndash;600 ms after stimulus onset (Polich, 2007).</p>
+<p>The goal was to record the EEG together with a stimulus marker, epoch it around the stimuli and decide, for each of the 8 electrodes, whether the response to circles differs from the response to squares by more than chance. Because the comparison is made at many time points at once, this requires a test that controls the false-alarm rate over all of them. We implemented the cluster-based nonparametric permutation test of Maris and Oostenveld (2007) as two functions (Section 3.5) and applied it to two runs of the experiment recorded in the lab, separately and pooled.</p>
+
+<h2>2. Background: nonparametric testing of EEG data (Maris &amp; Oostenveld, 2007)</h2>
+<p><b>The problem.</b> An EEG comparison between two conditions is made at every (sensor, time) pair, called a sample. Our epochs have {{runs.run1.main.n_times}} time points on 8 channels, i.e. {{runs.run1.main.n_tests}} samples. A t-test at every sample with &alpha; = 0.05 gives a family-wise false-alarm rate far above 5 % (the <i>multiple comparisons problem</i>, MCP): among hundreds of tests some &ldquo;significant&rdquo; samples are almost guaranteed even without any effect. The Bonferroni correction (&alpha; divided by the number of tests) controls the false-alarm rate but is very conservative, because neighbouring EEG samples are strongly correlated and are not independent tests.</p>
+<p><b>The core idea.</b> The paper solves the MCP with a permutation test. Under the null hypothesis the data of both conditions come from the same probability distribution, so the condition labels of the trials are <i>exchangeable</i>: assigning the trials to the two conditions at random produces data sets that are just as likely as the observed one. The procedure of Section 2.3 is: (1) pool the trials of both conditions; (2) draw at random as many trials as condition 1 had and call them subset 1, the rest subset 2 (a random partition); (3) compute the test statistic on this partition; (4) repeat many times (1000 in the paper) to build the permutation distribution; (5) the p-value is the proportion of random partitions whose statistic exceeds the observed one; (6) the conditions differ if p is below the critical &alpha;. The test is valid for <i>any</i> test statistic, and that freedom is what solves the MCP: one chooses a single statistic for the whole data structure, so only one comparison is made.</p>
+<p><b>The cluster statistic.</b> The statistic of Section 3.1.1 (single-sensor evoked responses) uses the prior knowledge that real ERP effects last tens of milliseconds, whereas noise produces isolated threshold crossings: (1) compute a t-value at every time sample; (2) keep the samples whose t exceeds a threshold (here the two-sided p &lt; 0.05 critical value); (3) group adjacent selected samples into clusters, positive and negative t separately; (4) sum the t-values in each cluster (&ldquo;cluster mass&rdquo;); (5) take the largest cluster sum in absolute value. The sample threshold only shapes the clusters; the false-alarm rate is set by the permutation distribution. Because every random partition contributes its <i>largest</i> cluster, the final p-value controls the false-alarm rate over all time points of the channel. The p-value refers to the cluster as a whole, not to each of its samples.</p>
+<p><b>How it relates to our experiment.</b> Ours is the paper&rsquo;s single-subject, <i>between-trials</i> design: the observations are trials (15 circles and about 75 squares per run), and under the null hypothesis that the brain responds identically to both stimuli the circle/square labels can be shuffled across trials. We use the single-sensor analysis of Section 3.1.1 for each of our 8 electrodes. The multi-sensor version (Section 3.1.2) also clusters over neighbouring sensors, which our sparse montage does not support well. The per-channel p-values therefore control errors over time within a channel but not across the 8 channels; we also report p-values corrected over channels with the maximum statistic over channels (Section 4.4 of the paper).</p>
+
+<h2>3. Methods</h2>
+<h3>3.1 Recording and stimulus marker</h3>
+<p>EEG was recorded with the OpenBCI Cyton board at {{runs.run1.sfreq}} Hz from FP1, FP2, C3, C4, P7, P8, O1 and O2. A photoresistor taped to the lower-left corner of the screen drove a comparator on the course PCB whose output went to the Cyton&rsquo;s digital input D13 (GUI widget &ldquo;Digital Read&rdquo;): D13 reads 1 while that corner is bright. The video shows a white square there at the onset of every stimulus, so D13 marks each onset on the same clock as the EEG. The subject watched the whole video twice in the same session (the second run started about 1 min 50 s after the first ended) without removing the headset (run 1: {{runs.run1.recording}}, {{runs.run1.duration_s}} s; run 2: {{runs.run2.recording}}, {{runs.run2.duration_s}} s). The large electrode DC offsets are similar at the start of both files (e.g. FP2 62.2 and 60.6 mV), consistent with an unchanged electrode placement.</p>
+<p>We measured the timing of <code>Lab4_video.mp4</code> frame by frame (20 frames/s; script <code>video_check.py</code>): the video starts with 5 white flashes 100 ms apart, then presents 90 stimuli every 1.2 s, the first 1.8 s after the first flash. Each white marker lasts 50 ms; each stimulus (red circle or blue square on a grey rectangle) stays on screen for 0.9 s. The positions of the red circles in the video agree with <code>circle_mask.csv</code> for all 90 trials.</p>
+
+<h3>3.2 Loading and the MNE object</h3>
+<p>Each OpenBCI text file was read with pandas; the columns <i>EXG Channel 0&ndash;7</i> were renamed FP1&hellip;O2 and the D13 column was renamed <i>photoresistor</i>. The manual places D13 in column <code>Other.2</code>, but in our files <code>Other.2</code> is constant (1) and D13 is in <code>{{runs.run1.photoresistor_column}}</code> (same values as <code>Analog Channel 1</code>, 0/256); our loader checks which column toggles between two levels and found <code>{{runs.run1.photoresistor_column}}</code> in both runs. The data were transposed to MNE&rsquo;s channels &times; samples convention, the EEG converted from &micro;V to V (&times;10<sup>&minus;6</sup>), and an <code>mne.io.RawArray</code> was created with channel types &lsquo;eeg&rsquo; (8&times;) and &lsquo;stim&rsquo; (photoresistor), with the sampling rate read from the file header. The packet counter shows no lost samples; it is reset once, 0.5 s after the stream starts, well before the video.</p>
+
+<h3>3.3 Events, annotations, filtering and cropping</h3>
+<p><code>mne.find_events</code> on the photoresistor channel gave the dark-to-bright transition of every detected pulse ({{runs.run1.n_onsets_total}} in run 1, {{runs.run2.n_onsets_total}} in run 2). They were converted to annotations with <code>mne.annotations_from_events</code> and attached with <code>set_annotations</code>. The recordings were band-pass filtered from 1 to 50 Hz (<code>raw.filter(1, 50)</code>, MNE&rsquo;s default zero-phase FIR filter; the stim channel is not filtered). This left a clear 60 Hz peak, because MNE&rsquo;s default transition band for a 50 Hz low-pass extends to 62.5 Hz. Since the manual asks that no line noise remain, we added a 60 Hz notch filter (<code>raw.notch_filter(60)</code>), which removed it (Figure 4).</p>
+<p>The photoresistor is slower than the screen: its pulses last a median of {{runs.run1.median_flash_ms}}&ndash;{{runs.run2.median_flash_ms}} ms instead of 50 ms, and the 5 sync flashes (100 ms apart, separated by 50 ms dark gaps) merged into a single long pulse in both runs (Figures 1 and 2). The manual expects &ldquo;3 events that are nearly separated by 100ms&rdquo; at the video start; we found 1. To identify the trials robustly we matched the detected onsets to the video&rsquo;s timetable: each run of flashes was tried as the video start, the 90 trial onsets were predicted 1.8 s after it and every 1.2 s thereafter (tolerance &plusmn;0.15 s, the prediction re-fitted to the matches found so far to absorb clock drift), and the candidate followed by the most trials won. In run 1 all 90 trials were found; in run 2 the onset of trial {{MISSED_run2}} (a square) was not detected, so that epoch was left out together with its entry in the mask, keeping the labels of all other trials aligned. Following the manual, each recording was then cropped from 0.5 s after the video start to 1 s after the last video TTL; because the merged sync pulse was still high 0.5 s after the start, the crop begins 50 ms after that pulse ends (run 1: {{runs.run1.crop_start_s}}&ndash;{{runs.run1.crop_stop_s}} s; run 2: {{runs.run2.crop_start_s}}&ndash;{{runs.run2.crop_stop_s}} s). <code>find_events</code> on the cropped data returns {{runs.run1.n_events_in_crop}} and {{runs.run2.n_events_in_crop}} events, all of them trials.</p>
+
+<h3>3.4 Epochs, conditions and z-score</h3>
+<p>Epochs were created with MNE&rsquo;s default settings: &minus;0.2 to 0.5 s around each onset, with baseline correction by the mean of &minus;0.2 to 0 s. Indexing them with <code>circle_mask.csv</code> gave {{runs.run1.main.n_circles}} circle and {{runs.run1.main.n_squares}} square epochs in run 1 and {{runs.run2.main.n_circles}} and {{runs.run2.main.n_squares}} in run 2, exported to NumPy arrays of shape (epochs, 8 channels, {{runs.run1.main.n_times}} samples). Each epoch and channel was z-scored against its own baseline,</p>
+<p class="eq">z = (x &minus; &mu;<sub>baseline</sub>) / &sigma;<sub>baseline</sub>,</p>
+<p>with &mu; and &sigma; the mean and standard deviation of the &minus;200 to 0 ms samples, so that each trial is expressed in units of its own pre-stimulus fluctuation and trials or channels with larger amplitudes do not dominate.</p>
+
+<h3>3.5 Statistics</h3>
+<ul>
+  <li><b>Function 1 (<code>nonparametric_test</code>, Section 3.1.1).</b> A two-sample t-test (<code>scipy.stats.ttest_ind</code>) at every channel and time sample, circles vs squares, gives t and p arrays of shape (8, {{runs.run1.main.n_times}}). For each channel, samples with p &lt; 0.05 are grouped into clusters of adjacent samples with <code>scipy.ndimage.label</code>, positive and negative t separately; each cluster&rsquo;s t-values are summed and the cluster with the largest absolute sum is returned with its location (0 if no sample is below 0.05).</li>
+  <li><b>Function 2 (<code>permutation_test</code>, Section 2.3).</b> Function 1 on the real data gives the observed statistic of each channel. The epochs of both conditions are pooled, shuffled and split into sets of the original sizes, and function 1 is applied to the partition; this is repeated {{n_permutations}} times (random seed {{seed}}). A channel&rsquo;s p-value is the proportion of partitions whose largest |cluster sum| is at least the observed one. The test is two-sided, so a large cluster of either sign counts. The resolution of p is 1/{{n_permutations}}; p = 0 is reported as p &lt; 0.001.</li>
+  <li><b>Checks.</b> The functions were tested on simulated data (they find a planted effect at the right latency, match a brute-force cluster sum and reject the null hypothesis at close to the nominal rate on pure-noise data: 7 % of 200 simulated data sets at &alpha; = 0.05). As an independent check, <code>mne.stats.permutation_cluster_test</code> was run with the same threshold and statistic; over every channel and analysis its p-values differ from ours by at most {{MNE_MAX_DIFF}}.</li>
+  <li><b>Correction over channels.</b> Each channel&rsquo;s statistic was also compared with the permutation distribution of the largest statistic over all 8 channels, which controls the false-alarm rate over channels as well (&ldquo;corr.&rdquo; in the tables).</li>
+  <li><b>Runs and pooling.</b> Each run was analysed on its own, as the manual describes. Because both runs come from the same subject and session, their z-scored epochs were also pooled ({{pooled.main.n_circles}} circles, {{pooled.main.n_squares}} squares) and tested the same way, which doubles the number of targets.</li>
+  <li><b>Longer window.</b> The default epoch ends at 0.5 s, before a P300 in a choice-response task is usually over, so everything was repeated with &minus;0.2 to 0.8 s epochs (the window in the manual&rsquo;s FAQ). The next stimulus comes 1.2 s after each onset and each stimulus stays on for 0.9 s, so neither the next trial nor the stimulus offset falls in this window.</li>
+</ul>
+
+<h2>4. Results</h2>
+<h3>4.1 Synchronisation and data quality</h3>
+<figure>
+  <img src="img/run1_photoresistor.png" alt="">
+  <figcaption><b>Figure 1.</b> Run 1. Top: the photoresistor (D13) over the whole recording with the matched video trials (red circles, blue squares) and the sync pulse used as the video start (&#9660;); the green band is the cropped window. Bottom: the start of the video. The 5 sync flashes appear as one long pulse, and the first trials follow every 1.2 s.</figcaption>
+</figure>
+<figure>
+  <img src="img/run2_photoresistor.png" alt="">
+  <figcaption><b>Figure 2.</b> Run 2, as Figure 1. The gap near 35 s is trial {{MISSED_run2}}, whose flash was not detected.</figcaption>
+</figure>
+<figure>
+  <img src="img/run1_raw_annotations.png" alt="">
+  <figcaption><b>Figure 3.</b> First 10 s of the cropped, filtered run 1 (MNE browser, 80 &micro;V scale bar) with the &lsquo;flash&rsquo; annotations: every annotation coincides with a rising edge of the photoresistor trace (bottom), i.e. the annotations are synchronised with the TTL pulses. C3, P8 and FP2 carry large slow waves and high-frequency bursts; C4, P7 and O2 are much cleaner.</figcaption>
+</figure>
+<figure>
+  <img src="img/run1_psd_before_after.png" alt="">
+  <figcaption><b>Figure 4.</b> Run 1: power spectral density of each channel before (left) and after (right) filtering (1&ndash;50 Hz band-pass and 60 Hz notch). The 60 Hz line (dotted) is removed; run 2 looks the same.</figcaption>
+</figure>
+<div class="tablewrap">
+{{TABLE_QUALITY}}
+<p class="cap"><b>Table 1.</b> Synchronisation and data quality. SD: standard deviation of each channel in the cropped, filtered recording.</p>
+</div>
+<p>Both runs were synchronised without ambiguity: every detected onset after the sync pulse fits the 1.2 s grid, and the circles fall where <code>circle_mask.csv</code> places them (Figures 1 and 2). Filtering removed the slow drift and the mains line (Figure 4). Signal quality differs strongly between electrodes. C4, P7 and O2 have SDs of 17&ndash;36 &micro;V, whereas C3, P8 and FP2 reach 100&ndash;240 &micro;V with slow waves and bursts of high-frequency (likely muscle) activity (Figure 3), which points to poor electrode contact at those sites. FP2 also shows large positive blink deflections. P8 shows a sharp deflection that peaks 4 ms after every flash onset, in both conditions (Figures 5, 6 and 8). No visual response is that fast, so it is almost certainly non-neural, most likely electrical pick-up from the long D13/photoresistor jumpers running near that input. It is very similar for circles and squares and therefore largely cancels in the comparison, but it shows that the marker wiring couples into the EEG. The zero-phase filter also spreads such a sharp transient slightly backwards in time, which is the likely origin of the small &ldquo;pre-stimulus&rdquo; clusters at P7 and P8 in Table 2.</p>
+
+<h3>4.2 Evoked responses and the permutation test (&minus;0.2 to 0.5 s)</h3>
+<figure>
+  <img src="img/run1_main_erp_all.png" alt="">
+  <figcaption><b>Figure 5.</b> Run 1: mean &plusmn; SEM z-scored response to circles (red, n = {{runs.run1.main.n_circles}}) and squares (blue, n = {{runs.run1.main.n_squares}}) on every channel. The shaded band is each channel&rsquo;s largest cluster (adjacent samples with p &lt; 0.05 and the same sign of t); the title gives its permutation p-value (* = p &lt; 0.05).</figcaption>
+</figure>
+<figure>
+  <img src="img/run2_main_erp_all.png" alt="">
+  <figcaption><b>Figure 6.</b> Run 2 ({{runs.run2.main.n_circles}} circles, {{runs.run2.main.n_squares}} squares), as Figure 5.</figcaption>
+</figure>
+{{FIGSIG_run2_main}}
+<div class="tablewrap">
+{{TABLE_MAIN}}
+<p class="cap"><b>Table 2.</b> Largest cluster per channel, &minus;0.2 to 0.5 s epochs, {{n_permutations}} permutations. &Sigma;t: cluster sum of t (negative: circles below squares). p: function 2; in brackets: corrected over the 8 channels. Highlighted: p &lt; 0.05. Channels with p &lt; 0.05: run 1 {{SIG_run1_main}}; run 2 {{SIG_run2_main}}; pooled {{SIG_pooled_main}}.</p>
+</div>
+<figure>
+  <img src="img/pooled_main_erp_all.png" alt="">
+  <figcaption><b>Figure 8.</b> Both runs pooled ({{pooled.main.n_circles}} circles, {{pooled.main.n_squares}} squares), as Figure 5.</figcaption>
+</figure>
+{{FIGSIG_pooled_main}}
+<figure>
+  <img src="img/run2_main_null.png" alt="">
+  <figcaption><b>Figure 10.</b> Run 2: permutation distribution of the largest |cluster sum of t| for each channel ({{n_permutations}} random partitions) and the observed value (red line). The p-value is the fraction of the histogram at or to the right of the red line.</figcaption>
+</figure>
+<figure>
+  <img src="img/pooled_evoked_microvolts.png" alt="">
+  <figcaption><b>Figure 11.</b> Both runs pooled: evoked responses in microvolts (baseline-corrected averages, not z-scored).</figcaption>
+</figure>
+<p><b>Run 1</b> shows no significant difference on any channel (Figure 5; smallest p = {{runs.run1.main.channels.4.p_value}} at P7, for a cluster around stimulus onset that cannot be a response to the stimulus). The largest post-stimulus cluster is a short negativity for circles at O2 (400&ndash;428 ms, p = {{runs.run1.main.channels.7.p_value}}). On FP1, FP2 and C3 not a single sample reached p &lt; 0.05. <b>Run 2</b> shows significant clusters at <b>O2</b> (420&ndash;500 ms, p = {{runs.run2.main.channels.7.p_value}}) and <b>C4</b> (360&ndash;500 ms, p = {{runs.run2.main.channels.3.p_value}}), in both cases with circles <i>more negative</i> than squares, by {{runs.run2.main.channels.7.cluster_diff_uv}} &micro;V and {{runs.run2.main.channels.3.cluster_diff_uv}} &micro;V on average over the cluster (Figures 6 and 7). <b>Pooled</b>, the same two channels are significant with the same sign and timing: O2 360&ndash;500 ms, p = {{pooled.main.channels.7.p_value}}, {{pooled.main.channels.7.cluster_diff_uv}} &micro;V; C4 364&ndash;500 ms, p = {{pooled.main.channels.3.p_value}}, {{pooled.main.channels.3.cluster_diff_uv}} &micro;V (Figures 8, 9 and 11). After correction over the 8 channels no p-value is below 0.05 in any data set (smallest: {{runs.run2.main.channels.3.p_value_corrected}}, C4 in run 2).</p>
+
+<h3>4.3 Longer epochs (&minus;0.2 to 0.8 s)</h3>
+<div class="tablewrap">
+{{TABLE_EXTENDED}}
+<p class="cap"><b>Table 3.</b> As Table 2 for &minus;0.2 to 0.8 s epochs. Channels with p &lt; 0.05: run 1 {{SIG_run1_extended}}; run 2 {{SIG_run2_extended}}; pooled {{SIG_pooled_extended}}.</p>
+</div>
+<figure>
+  <img src="img/pooled_extended_erp_all.png" alt="">
+  <figcaption><b>Figure 12.</b> Both runs pooled, &minus;200 to 800 ms epochs, as Figure 8.</figcaption>
+</figure>
+{{FIGSIG_run2_extended}}
+{{FIGSIG_pooled_extended}}
+<p>With the longer window the O2 negativity extends to about 580 ms and becomes stronger (run 2: 420&ndash;580 ms, p &lt; 0.001; pooled: 360&ndash;576 ms, p = {{pooled.extended.channels.7.p_value}}). In run 2, C3 also shows a late negative cluster (484&ndash;628 ms, p = {{runs.run2.extended.channels.2.p_value}}; Figure 13), but its mean difference of {{runs.run2.extended.channels.2.cluster_diff_uv}} &micro;V is far larger than any ERP, C3 is the noisiest channel, and in the default window its largest cluster had the opposite sign. We therefore attribute it to a few large artefacts in the circle epochs rather than to a brain response. The pooled C4 cluster hardly changes but its p-value rises to {{pooled.extended.channels.3.p_value}}: a longer window gives the random partitions more chances to produce a large cluster, so the same observed cluster is less extreme. Run 1 remains without significant channels.</p>
+
+<h2>5. Discussion</h2>
+<h3>5.1 What differs between targets and non-targets</h3>
+<p>The one consistent finding is a late, sustained <b>negativity for targets</b> at O2 and C4, starting about 360 ms after stimulus onset and lasting into the 500&ndash;600 ms range, roughly 10&ndash;20 &micro;V in size. It is significant in run 2; run 1 shows only a non-significant trend in the same direction at O2 (400&ndash;428 ms, p = {{runs.run1.main.channels.7.p_value}}) and no post-stimulus cluster at C4. The pooled data are significant as well, but they include run 2 and are not an independent replication: pooling makes the effect significant overall while it is driven mainly by run 2. The effect appears on two of the cleanest electrodes, which is expected: with 15 targets per run, an effect of this size can only be detected where the background noise is low.</p>
+<p>We did not observe the textbook P300, a positivity for targets around 300&ndash;600 ms. There are several reasons, and our data cannot fully separate them:</p>
+<ul>
+  <li><b>Montage.</b> The P300 is largest at the midline (Pz, Cz), which our 8-electrode montage does not cover, and much smaller at lateral sites such as P7/P8 and O1/O2. The sites closest to the midline, C3 and C4, behaved differently: C3 was among the noisiest channels, and the clean C4 shows a negativity rather than a positivity.</li>
+  <li><b>Motor response.</b> Only circles were followed by a button press. Reaction times in such tasks are typically 300&ndash;500 ms (we did not record them), so movement-related potentials over the central motor cortex, and any small movement of the cables or headset during the press, overlap with the time window of the effect and are confounded with target status. A lateralised motor potential would appear over the hemisphere opposite the responding hand (C4 for the left hand); we did not note which hand was used, so this explanation for C4 can neither be confirmed nor excluded.</li>
+  <li><b>Stimulus differences.</b> Circles and squares differ not only in task relevance but also in colour, shape and area (the blue square covers about 7 times as many pixels as the red circle), so part of any difference may be sensory.</li>
+  <li><b>Eye activity.</b> At FP2 the circle response falls below the square response from about 50 ms and is lowest near 270 ms (pooled p = {{pooled.main.channels.1.p_value}}). Since blinks are positive at FP2, this is consistent with fewer blinks or a downward gaze (e.g. towards the button) after targets, so eye activity also differed between the conditions.</li>
+</ul>
+
+<h3>5.2 Why the cluster-based test matters here</h3>
+<p>Our data illustrate the multiple comparisons problem directly. In run 1, a plain t-test at every sample marks {{runs.run1.main.uncorrected_samples}} of {{runs.run1.main.n_tests}} samples as significant (p &lt; 0.05), about the 70 expected by chance alone, in a run in which the permutation test detects no reliable effect. A sample-by-sample analysis would therefore &ldquo;discover&rdquo; effects in noise. The opposite correction is too strict: with Bonferroni (p &lt; 0.05/{{runs.run1.main.n_tests}}) not a single sample survives in any of the default-window analyses, not even pooled, where {{pooled.main.uncorrected_samples}} samples reach p &lt; 0.05 (in the longer window only run 2 keeps {{runs.run2.extended.bonferroni_samples}} of {{runs.run2.extended.n_tests}} samples). The cluster statistic sits in between. It ignores scattered, isolated crossings, which random partitions produce just as often, but it accumulates evidence over the 21&ndash;55 adjacent samples of the O2 and C4 clusters, and only random partitions that happen to produce an equally long and strong cluster count against it. This is the sensitivity gain that Maris and Oostenveld describe, obtained without giving up control of the false-alarm rate over time. Because the inference is about the cluster as a whole, the exact start and end of the clusters (e.g. 360 vs 420 ms) should not be over-interpreted.</p>
+
+<h3>5.3 How strong is the evidence?</h3>
+<p>The manual&rsquo;s test is applied to each of the 8 channels separately. If no channel had any effect, the chance that at least one of them reaches p &lt; 0.05 would be about 1 &minus; 0.95<sup>8</sup> &asymp; 34 % if the channels were independent (at most 8 &times; 5 % = 40 %). When each channel is compared with the distribution of the largest statistic over all 8 channels, none of our clusters remains below 0.05 (smallest corrected p = {{pooled.extended.channels.7.p_value_corrected}}, O2 pooled, long window). The target negativity at O2/C4 is therefore best described as a consistent but tentative effect: the agreement in direction and latency between run 2 and the trend in run 1 speaks for it, but both runs come from the same subject and session; the channel-wise correction and the small number of targets ask for a replication before it is taken as established.</p>
+
+<h3>5.4 Limitations and what we would do differently</h3>
+<ul>
+  <li><b>Electrode contact.</b> C3, P8 and FP2 had 6&ndash;14 times the standard deviation of the cleanest channels. Checking the impedances and re-gelling these sites before recording would likely have made the C3/P8 responses usable. The per-epoch z-score limits the influence of noisy trials but cannot recover a signal buried in noise.</li>
+  <li><b>Few targets.</b> 15 circles per run leave a noisy target average (wide red SEM bands). More runs, or a video with more targets, would help; pooling the two runs made the O2 effect significant overall, although it is driven mainly by run 2.</li>
+  <li><b>Confounds.</b> The response should be balanced across conditions (e.g. a different button for squares) or recorded on a second digital input, so that motor activity could be separated from target processing and reaction times measured. Counterbalancing colour and shape would remove the sensory confound.</li>
+  <li><b>Marker hardware.</b> The slow photoresistor merged the sync flashes and missed one trial, and the jumper wiring couples into P8. Shorter or shielded wiring and keeping the marker cable away from the electrodes would avoid both problems; matching onsets to the known video timetable made the analysis robust to them.</li>
+  <li><b>Artefacts.</b> No trials were rejected and blinks were not removed. Excluding trials with blinks, or removing them with ICA as in Lab 3, would reduce the frontal and possibly the central noise.</li>
+</ul>
+
+<h2>6. Conclusion</h2>
+<p>We recorded two runs of a visual oddball task with a photoresistor marker, epoched {{pooled.main.n_epochs}} trials ({{pooled.main.n_circles}} targets) with MNE and compared targets with non-targets on each electrode using our own implementation of the cluster-based permutation test of Maris and Oostenveld (2007), which agrees with MNE&rsquo;s implementation. Targets were accompanied by a sustained negativity relative to non-targets at O2 and C4 from about 360 ms on. It is significant in the second run and in the pooled data (O2 p = {{pooled.main.channels.7.p_value}}, C4 p = {{pooled.main.channels.3.p_value}}), only a non-significant trend in the same direction in the first run, and not significant after correcting over the 8 channels. A classic midline P300 could not be assessed with this montage, and the button press and stimulus differences are plausible contributors to the effect. The data also show why the cluster test is needed: an uncorrected sample-wise test finds as many &ldquo;effects&rdquo; as chance predicts in a run where the permutation test finds no reliable difference, while Bonferroni finds none in the default window even where the cluster test does.</p>
+
+<h2>References</h2>
+<div class="refs">
+  <p>Maris, E., &amp; Oostenveld, R. (2007). Nonparametric statistical testing of EEG- and MEG-data. <i>Journal of Neuroscience Methods, 164</i>(1), 177&ndash;190. https://doi.org/10.1016/j.jneumeth.2007.03.024</p>
+  <p>Gramfort, A., et al. (2013). MEG and EEG data analysis with MNE-Python. <i>Frontiers in Neuroscience, 7</i>, 267. https://doi.org/10.3389/fnins.2013.00267</p>
+  <p>Polich, J. (2007). Updating P300: An integrative theory of P3a and P3b. <i>Clinical Neurophysiology, 118</i>(10), 2128&ndash;2148. https://doi.org/10.1016/j.clinph.2007.04.019</p>
+</div>
+
+<h2 class="pagebreak">Appendix A. Code: <code>lab4_stats.py</code> (functions 1 and 2)</h2>
+<pre>{{CODE_STATS}}</pre>
+<h2 class="pagebreak">Appendix B. Code: <code>lab4_analysis.py</code> (pipeline)</h2>
+<p>The figure code (<code>lab4_plots.py</code>), the synthetic test recording (<code>lab4_synthetic.py</code>) and the tests (<code>test_lab4.py</code>) are in the group repository.</p>
+<pre>{{CODE_ANALYSIS}}</pre>
+
+</body>
+</html>

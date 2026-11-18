@@ -1,0 +1,1180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ECE441 Lab 4 Report</title>
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 17mm 20mm 17mm;
+    @bottom-center { content: counter(page); font: 9pt Cambria, Georgia, serif; color: #555; }
+  }
+  :root { --ink: #1b1b1f; --muted: #5a5a63; --rule: #c9c9d0; --accent: #1f4e79; --tint: #f2f5f9; }
+  * { box-sizing: border-box; }
+  body { font: 10.5pt/1.42 Cambria, Georgia, "Times New Roman", serif; color: var(--ink); margin: 0; background: #fff; }
+  h1 { font: 700 19pt/1.2 "Segoe UI", Calibri, sans-serif; color: var(--accent); margin: 0 0 4pt; }
+  .authors { font: 600 10.5pt "Segoe UI", Calibri, sans-serif; color: var(--ink); margin: 0 0 2pt; }
+  .subtitle { font: 10pt "Segoe UI", Calibri, sans-serif; color: var(--muted); margin: 0 0 10pt; padding-bottom: 8pt; border-bottom: 1.5pt solid var(--accent); }
+  h2 { font: 700 13.5pt "Segoe UI", Calibri, sans-serif; color: var(--accent); margin: 16pt 0 5pt; break-after: avoid; }
+  h3 { font: 700 11pt "Segoe UI", Calibri, sans-serif; margin: 11pt 0 3pt; break-after: avoid; }
+  p { margin: 0 0 6pt; text-align: justify; hyphens: auto; }
+  ul, ol { margin: 0 0 6pt 16pt; padding: 0; }
+  li { margin-bottom: 2pt; }
+  figure { margin: 8pt 0 10pt; break-inside: avoid; }
+  figure.narrow img { max-width: 70%; margin: 0 auto; }
+  figcaption { font: 9pt/1.35 "Segoe UI", Calibri, sans-serif; color: var(--muted); margin-top: 3pt; }
+  figcaption b { color: var(--ink); }
+  img { display: block; max-width: 100%; height: auto; }
+  table { border-collapse: collapse; width: 100%; font: 8.6pt/1.3 "Segoe UI", Calibri, sans-serif; margin: 4pt 0 2pt; }
+  th, td { padding: 2.5pt 5pt; text-align: left; border-bottom: .5pt solid var(--rule); vertical-align: top; }
+  th { background: var(--tint); border-top: 1pt solid var(--accent); border-bottom: 1pt solid var(--accent); font-weight: 600; }
+  th.grp { text-align: center; border-left: 1pt solid #fff; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  td.sig { background: #fff1c9; font-weight: 700; }
+  .corr { color: var(--muted); font-weight: 400; }
+  tr.foot td { color: var(--muted); border-top: 1pt solid var(--rule); }
+  table.quality { width: 78%; }
+  .tablewrap { break-inside: avoid; margin: 6pt 0 10pt; }
+  .cap { font: 9pt/1.35 "Segoe UI", Calibri, sans-serif; color: var(--muted); margin-top: 2pt; text-align: left; }
+  .cap b { color: var(--ink); }
+  .box { border-left: 3pt solid var(--accent); background: var(--tint); padding: 5pt 9pt; margin: 6pt 0 8pt; break-inside: avoid; }
+  .box p { margin: 0 0 3pt; text-align: left; }
+  .box p:last-child { margin: 0; }
+  .demo { border: 1.5pt solid #c62828; color: #c62828; background: #fdecea; padding: 6pt 9pt; margin: 0 0 10pt; font: 600 10pt "Segoe UI", Calibri, sans-serif; }
+  .eq { text-align: center; margin: 4pt 0 8pt; font-style: italic; }
+  code, pre { font-family: Consolas, "Cascadia Mono", monospace; }
+  code { font-size: 9.2pt; }
+  pre { font-size: 7.2pt; line-height: 1.25; background: #fafafa; border: .5pt solid var(--rule); padding: 6pt 8pt; white-space: pre-wrap; word-break: break-word; margin: 4pt 0; }
+  .refs p { text-align: left; padding-left: 14pt; text-indent: -14pt; font-size: 9.8pt; }
+  .pagebreak { break-before: page; }
+</style>
+</head>
+<body>
+
+
+<h1>Event-Related Potentials to Targets and Non-Targets, Tested with a Cluster-Based Permutation Test</h1>
+<!-- GROUP MEMBERS: replace the two [ ... ] entries with your name and student number, then run report/build_report.py -->
+<p class="authors">Laurence Yang (1010500520) &middot; [Member 2 name] ([student number]) &middot; [Member 3 name] ([student number])</p>
+<p class="subtitle">ECE441 &middot; Lab 4 report &middot; two runs of the oddball video, recordings <code>trial1.txt</code> and <code>trial2.txt</code></p>
+
+<h2>1. Introduction</h2>
+<p>One group member watched a video in which a red circle or a blue square appeared every 1.2 s, 90 times in total, and pressed a pushbutton as fast as possible whenever a red circle appeared while ignoring the squares. Only 15 of the 90 stimuli are circles, so the task is a visual <i>oddball</i> paradigm: rare, task-relevant targets among frequent non-targets. Both stimulus types should evoke early visual responses (P1/N1, roughly 100&ndash;200 ms) over the occipital cortex; rare targets that require a decision and a response are known to evoke, in addition, a late positivity, the P300, which is largest over the centro-parietal midline 300&ndash;600 ms after stimulus onset (Polich, 2007).</p>
+<p>The goal was to record the EEG together with a stimulus marker, epoch it around the stimuli and decide, for each of the 8 electrodes, whether the response to circles differs from the response to squares by more than chance. Because the comparison is made at many time points at once, this requires a test that controls the false-alarm rate over all of them. We implemented the cluster-based nonparametric permutation test of Maris and Oostenveld (2007) as two functions (Section 3.5) and applied it to two runs of the experiment recorded in the lab, separately and pooled.</p>
+
+<h2>2. Background: nonparametric testing of EEG data (Maris &amp; Oostenveld, 2007)</h2>
+<p><b>The problem.</b> An EEG comparison between two conditions is made at every (sensor, time) pair, called a sample. Our epochs have 176 time points on 8 channels, i.e. 1408 samples. A t-test at every sample with &alpha; = 0.05 gives a family-wise false-alarm rate far above 5 % (the <i>multiple comparisons problem</i>, MCP): among hundreds of tests some &ldquo;significant&rdquo; samples are almost guaranteed even without any effect. The Bonferroni correction (&alpha; divided by the number of tests) controls the false-alarm rate but is very conservative, because neighbouring EEG samples are strongly correlated and are not independent tests.</p>
+<p><b>The core idea.</b> The paper solves the MCP with a permutation test. Under the null hypothesis the data of both conditions come from the same probability distribution, so the condition labels of the trials are <i>exchangeable</i>: assigning the trials to the two conditions at random produces data sets that are just as likely as the observed one. The procedure of Section 2.3 is: (1) pool the trials of both conditions; (2) draw at random as many trials as condition 1 had and call them subset 1, the rest subset 2 (a random partition); (3) compute the test statistic on this partition; (4) repeat many times (1000 in the paper) to build the permutation distribution; (5) the p-value is the proportion of random partitions whose statistic exceeds the observed one; (6) the conditions differ if p is below the critical &alpha;. The test is valid for <i>any</i> test statistic, and that freedom is what solves the MCP: one chooses a single statistic for the whole data structure, so only one comparison is made.</p>
+<p><b>The cluster statistic.</b> The statistic of Section 3.1.1 (single-sensor evoked responses) uses the prior knowledge that real ERP effects last tens of milliseconds, whereas noise produces isolated threshold crossings: (1) compute a t-value at every time sample; (2) keep the samples whose t exceeds a threshold (here the two-sided p &lt; 0.05 critical value); (3) group adjacent selected samples into clusters, positive and negative t separately; (4) sum the t-values in each cluster (&ldquo;cluster mass&rdquo;); (5) take the largest cluster sum in absolute value. The sample threshold only shapes the clusters; the false-alarm rate is set by the permutation distribution. Because every random partition contributes its <i>largest</i> cluster, the final p-value controls the false-alarm rate over all time points of the channel. The p-value refers to the cluster as a whole, not to each of its samples.</p>
+<p><b>How it relates to our experiment.</b> Ours is the paper&rsquo;s single-subject, <i>between-trials</i> design: the observations are trials (15 circles and about 75 squares per run), and under the null hypothesis that the brain responds identically to both stimuli the circle/square labels can be shuffled across trials. We use the single-sensor analysis of Section 3.1.1 for each of our 8 electrodes. The multi-sensor version (Section 3.1.2) also clusters over neighbouring sensors, which our sparse montage does not support well. The per-channel p-values therefore control errors over time within a channel but not across the 8 channels; we also report p-values corrected over channels with the maximum statistic over channels (Section 4.4 of the paper).</p>
+
+<h2>3. Methods</h2>
+<h3>3.1 Recording and stimulus marker</h3>
+<p>EEG was recorded with the OpenBCI Cyton board at 250 Hz from FP1, FP2, C3, C4, P7, P8, O1 and O2. A photoresistor taped to the lower-left corner of the screen drove a comparator on the course PCB whose output went to the Cyton&rsquo;s digital input D13 (GUI widget &ldquo;Digital Read&rdquo;): D13 reads 1 while that corner is bright. The video shows a white square there at the onset of every stimulus, so D13 marks each onset on the same clock as the EEG. The subject watched the whole video twice in the same session (the second run started about 1 min 50 s after the first ended) without removing the headset (run 1: trial1.txt, 118.7 s; run 2: trial2.txt, 119.6 s). The large electrode DC offsets are similar at the start of both files (e.g. FP2 62.2 and 60.6 mV), consistent with an unchanged electrode placement.</p>
+<p>We measured the timing of <code>Lab4_video.mp4</code> frame by frame (20 frames/s; script <code>video_check.py</code>): the video starts with 5 white flashes 100 ms apart, then presents 90 stimuli every 1.2 s, the first 1.8 s after the first flash. Each white marker lasts 50 ms; each stimulus (red circle or blue square on a grey rectangle) stays on screen for 0.9 s. The positions of the red circles in the video agree with <code>circle_mask.csv</code> for all 90 trials.</p>
+
+<h3>3.2 Loading and the MNE object</h3>
+<p>Each OpenBCI text file was read with pandas; the columns <i>EXG Channel 0&ndash;7</i> were renamed FP1&hellip;O2 and the D13 column was renamed <i>photoresistor</i>. The manual places D13 in column <code>Other.2</code>, but in our files <code>Other.2</code> is constant (1) and D13 is in <code>Other.3</code> (same values as <code>Analog Channel 1</code>, 0/256); our loader checks which column toggles between two levels and found <code>Other.3</code> in both runs. The data were transposed to MNE&rsquo;s channels &times; samples convention, the EEG converted from &micro;V to V (&times;10<sup>&minus;6</sup>), and an <code>mne.io.RawArray</code> was created with channel types &lsquo;eeg&rsquo; (8&times;) and &lsquo;stim&rsquo; (photoresistor), with the sampling rate read from the file header. The packet counter shows no lost samples; it is reset once, 0.5 s after the stream starts, well before the video.</p>
+
+<h3>3.3 Events, annotations, filtering and cropping</h3>
+<p><code>mne.find_events</code> on the photoresistor channel gave the dark-to-bright transition of every detected pulse (91 in run 1, 90 in run 2). They were converted to annotations with <code>mne.annotations_from_events</code> and attached with <code>set_annotations</code>. The recordings were band-pass filtered from 1 to 50 Hz (<code>raw.filter(1, 50)</code>, MNE&rsquo;s default zero-phase FIR filter; the stim channel is not filtered). This left a clear 60 Hz peak, because MNE&rsquo;s default transition band for a 50 Hz low-pass extends to 62.5 Hz. Since the manual asks that no line noise remain, we added a 60 Hz notch filter (<code>raw.notch_filter(60)</code>), which removed it (Figure 4).</p>
+<p>The photoresistor is slower than the screen: its pulses last a median of 120&ndash;136 ms instead of 50 ms, and the 5 sync flashes (100 ms apart, separated by 50 ms dark gaps) merged into a single long pulse in both runs (Figures 1 and 2). The manual expects &ldquo;3 events that are nearly separated by 100ms&rdquo; at the video start; we found 1. To identify the trials robustly we matched the detected onsets to the video&rsquo;s timetable: each run of flashes was tried as the video start, the 90 trial onsets were predicted 1.8 s after it and every 1.2 s thereafter (tolerance &plusmn;0.15 s, the prediction re-fitted to the matches found so far to absorb clock drift), and the candidate followed by the most trials won. In run 1 all 90 trials were found; in run 2 the onset of trial 24 (a square) was not detected, so that epoch was left out together with its entry in the mask, keeping the labels of all other trials aligned. Following the manual, each recording was then cropped from 0.5 s after the video start to 1 s after the last video TTL; because the merged sync pulse was still high 0.5 s after the start, the crop begins 50 ms after that pulse ends (run 1: 6.36&ndash;115.37 s; run 2: 6.28&ndash;115.32 s). <code>find_events</code> on the cropped data returns 90 and 89 events, all of them trials.</p>
+
+<h3>3.4 Epochs, conditions and z-score</h3>
+<p>Epochs were created with MNE&rsquo;s default settings: &minus;0.2 to 0.5 s around each onset, with baseline correction by the mean of &minus;0.2 to 0 s. Indexing them with <code>circle_mask.csv</code> gave 15 circle and 75 square epochs in run 1 and 15 and 74 in run 2, exported to NumPy arrays of shape (epochs, 8 channels, 176 samples). Each epoch and channel was z-scored against its own baseline,</p>
+<p class="eq">z = (x &minus; &mu;<sub>baseline</sub>) / &sigma;<sub>baseline</sub>,</p>
+<p>with &mu; and &sigma; the mean and standard deviation of the &minus;200 to 0 ms samples, so that each trial is expressed in units of its own pre-stimulus fluctuation and trials or channels with larger amplitudes do not dominate.</p>
+
+<h3>3.5 Statistics</h3>
+<ul>
+  <li><b>Function 1 (<code>nonparametric_test</code>, Section 3.1.1).</b> A two-sample t-test (<code>scipy.stats.ttest_ind</code>) at every channel and time sample, circles vs squares, gives t and p arrays of shape (8, 176). For each channel, samples with p &lt; 0.05 are grouped into clusters of adjacent samples with <code>scipy.ndimage.label</code>, positive and negative t separately; each cluster&rsquo;s t-values are summed and the cluster with the largest absolute sum is returned with its location (0 if no sample is below 0.05).</li>
+  <li><b>Function 2 (<code>permutation_test</code>, Section 2.3).</b> Function 1 on the real data gives the observed statistic of each channel. The epochs of both conditions are pooled, shuffled and split into sets of the original sizes, and function 1 is applied to the partition; this is repeated 1000 times (random seed 0). A channel&rsquo;s p-value is the proportion of partitions whose largest |cluster sum| is at least the observed one. The test is two-sided, so a large cluster of either sign counts. The resolution of p is 1/1000; p = 0 is reported as p &lt; 0.001.</li>
+  <li><b>Checks.</b> The functions were tested on simulated data (they find a planted effect at the right latency, match a brute-force cluster sum and reject the null hypothesis at close to the nominal rate on pure-noise data: 7 % of 200 simulated data sets at &alpha; = 0.05). As an independent check, <code>mne.stats.permutation_cluster_test</code> was run with the same threshold and statistic; over every channel and analysis its p-values differ from ours by at most 0.001.</li>
+  <li><b>Correction over channels.</b> Each channel&rsquo;s statistic was also compared with the permutation distribution of the largest statistic over all 8 channels, which controls the false-alarm rate over channels as well (&ldquo;corr.&rdquo; in the tables).</li>
+  <li><b>Runs and pooling.</b> Each run was analysed on its own, as the manual describes. Because both runs come from the same subject and session, their z-scored epochs were also pooled (30 circles, 149 squares) and tested the same way, which doubles the number of targets.</li>
+  <li><b>Longer window.</b> The default epoch ends at 0.5 s, before a P300 in a choice-response task is usually over, so everything was repeated with &minus;0.2 to 0.8 s epochs (the window in the manual&rsquo;s FAQ). The next stimulus comes 1.2 s after each onset and each stimulus stays on for 0.9 s, so neither the next trial nor the stimulus offset falls in this window.</li>
+</ul>
+
+<h2>4. Results</h2>
+<h3>4.1 Synchronisation and data quality</h3>
+<figure>
+  <img src="img/run1_photoresistor.png" alt="">
+  <figcaption><b>Figure 1.</b> Run 1. Top: the photoresistor (D13) over the whole recording with the matched video trials (red circles, blue squares) and the sync pulse used as the video start (&#9660;); the green band is the cropped window. Bottom: the start of the video. The 5 sync flashes appear as one long pulse, and the first trials follow every 1.2 s.</figcaption>
+</figure>
+<figure>
+  <img src="img/run2_photoresistor.png" alt="">
+  <figcaption><b>Figure 2.</b> Run 2, as Figure 1. The gap near 35 s is trial 24, whose flash was not detected.</figcaption>
+</figure>
+<figure>
+  <img src="img/run1_raw_annotations.png" alt="">
+  <figcaption><b>Figure 3.</b> First 10 s of the cropped, filtered run 1 (MNE browser, 80 &micro;V scale bar) with the &lsquo;flash&rsquo; annotations: every annotation coincides with a rising edge of the photoresistor trace (bottom), i.e. the annotations are synchronised with the TTL pulses. C3, P8 and FP2 carry large slow waves and high-frequency bursts; C4, P7 and O2 are much cleaner.</figcaption>
+</figure>
+<figure>
+  <img src="img/run1_psd_before_after.png" alt="">
+  <figcaption><b>Figure 4.</b> Run 1: power spectral density of each channel before (left) and after (right) filtering (1&ndash;50 Hz band-pass and 60 Hz notch). The 60 Hz line (dotted) is removed; run 2 looks the same.</figcaption>
+</figure>
+<div class="tablewrap">
+<table class="quality"><tr><th></th><th class="n">Run 1 (trial1.txt)</th><th class="n">Run 2 (trial2.txt)</th></tr><tr><td>Duration (s)</td><td class="n">118.7</td><td class="n">119.6</td></tr><tr><td>D13 column</td><td class="n"><code>Other.3</code></td><td class="n"><code>Other.3</code></td></tr><tr><td>Photoresistor onsets</td><td class="n">91</td><td class="n">90</td></tr><tr><td>Sync onsets detected (of 5 flashes)</td><td class="n">1</td><td class="n">1</td></tr><tr><td>Median TTL pulse (ms)</td><td class="n">120</td><td class="n">136</td></tr><tr><td>Trials matched / 90</td><td class="n">90</td><td class="n">89</td></tr><tr><td>Trials missed</td><td class="n">none</td><td class="n">24</td></tr><tr><td>Cropped window (s)</td><td class="n">6.36&ndash;115.37</td><td class="n">6.28&ndash;115.32</td></tr><tr><td>find_events in crop</td><td class="n">90</td><td class="n">89</td></tr><tr><td>Lost samples / counter resets</td><td class="n">0 / 1</td><td class="n">0 / 1</td></tr><tr><td>SD FP1 (&micro;V)</td><td class="n">38.2</td><td class="n">85.2</td></tr><tr><td>SD FP2 (&micro;V)</td><td class="n">100.2</td><td class="n">119.4</td></tr><tr><td>SD C3 (&micro;V)</td><td class="n">239.0</td><td class="n">130.4</td></tr><tr><td>SD C4 (&micro;V)</td><td class="n">25.4</td><td class="n">24.4</td></tr><tr><td>SD P7 (&micro;V)</td><td class="n">16.8</td><td class="n">35.6</td></tr><tr><td>SD P8 (&micro;V)</td><td class="n">145.9</td><td class="n">150.3</td></tr><tr><td>SD O1 (&micro;V)</td><td class="n">59.7</td><td class="n">28.0</td></tr><tr><td>SD O2 (&micro;V)</td><td class="n">17.9</td><td class="n">17.0</td></tr></table>
+<p class="cap"><b>Table 1.</b> Synchronisation and data quality. SD: standard deviation of each channel in the cropped, filtered recording.</p>
+</div>
+<p>Both runs were synchronised without ambiguity: every detected onset after the sync pulse fits the 1.2 s grid, and the circles fall where <code>circle_mask.csv</code> places them (Figures 1 and 2). Filtering removed the slow drift and the mains line (Figure 4). Signal quality differs strongly between electrodes. C4, P7 and O2 have SDs of 17&ndash;36 &micro;V, whereas C3, P8 and FP2 reach 100&ndash;240 &micro;V with slow waves and bursts of high-frequency (likely muscle) activity (Figure 3), which points to poor electrode contact at those sites. FP2 also shows large positive blink deflections. P8 shows a sharp deflection that peaks 4 ms after every flash onset, in both conditions (Figures 5, 6 and 8). No visual response is that fast, so it is almost certainly non-neural, most likely electrical pick-up from the long D13/photoresistor jumpers running near that input. It is very similar for circles and squares and therefore largely cancels in the comparison, but it shows that the marker wiring couples into the EEG. The zero-phase filter also spreads such a sharp transient slightly backwards in time, which is the likely origin of the small &ldquo;pre-stimulus&rdquo; clusters at P7 and P8 in Table 2.</p>
+
+<h3>4.2 Evoked responses and the permutation test (&minus;0.2 to 0.5 s)</h3>
+<figure>
+  <img src="img/run1_main_erp_all.png" alt="">
+  <figcaption><b>Figure 5.</b> Run 1: mean &plusmn; SEM z-scored response to circles (red, n = 15) and squares (blue, n = 75) on every channel. The shaded band is each channel&rsquo;s largest cluster (adjacent samples with p &lt; 0.05 and the same sign of t); the title gives its permutation p-value (* = p &lt; 0.05).</figcaption>
+</figure>
+<figure>
+  <img src="img/run2_main_erp_all.png" alt="">
+  <figcaption><b>Figure 6.</b> Run 2 (15 circles, 74 squares), as Figure 5.</figcaption>
+</figure>
+<figure class="narrow"><img src="img/run2_main_erp_significant.png" alt=""><figcaption><b>Figure 7.</b> Run 2: the channels with a permutation p-value below 0.05 (C4, O2), mean &plusmn; SEM z-scored response to circles (red) and squares (blue); the shaded band is the channel&rsquo;s largest cluster.</figcaption></figure>
+<div class="tablewrap">
+<table class="stats"><tr><th rowspan="2">Channel</th><th colspan="3" class="grp">Run 1</th><th colspan="3" class="grp">Run 2</th><th colspan="3" class="grp">Pooled</th></tr><tr><th class="n">cluster (ms)</th><th class="n">&Sigma;t</th><th class="n">p (corr.)</th><th class="n">cluster (ms)</th><th class="n">&Sigma;t</th><th class="n">p (corr.)</th><th class="n">cluster (ms)</th><th class="n">&Sigma;t</th><th class="n">p (corr.)</th></tr><tr><td>FP1</td><td class="n">&ndash;</td><td class="n">0</td><td class="n">1.000 <span class="corr">(1.000)</span></td><td class="n">-192 to -192</td><td class="n">-2</td><td class="n">0.577 <span class="corr">(0.999)</span></td><td class="n">&ndash;</td><td class="n">0</td><td class="n">1.000 <span class="corr">(1.000)</span></td></tr><tr><td>FP2</td><td class="n">&ndash;</td><td class="n">0</td><td class="n">1.000 <span class="corr">(1.000)</span></td><td class="n">144 to 212</td><td class="n">-40</td><td class="n">0.088 <span class="corr">(0.392)</span></td><td class="n">220 to 316</td><td class="n">-58</td><td class="n">0.088 <span class="corr">(0.338)</span></td></tr><tr><td>C3</td><td class="n">&ndash;</td><td class="n">0</td><td class="n">1.000 <span class="corr">(1.000)</span></td><td class="n">368 to 420</td><td class="n">32</td><td class="n">0.145 <span class="corr">(0.482)</span></td><td class="n">&ndash;</td><td class="n">0</td><td class="n">1.000 <span class="corr">(1.000)</span></td></tr><tr><td>C4</td><td class="n">-132 to -120</td><td class="n">-10</td><td class="n">0.286 <span class="corr">(0.863)</span></td><td class="n">360 to 500</td><td class="n">-93</td><td class="n sig">0.023 <span class="corr">(0.174)</span></td><td class="n">364 to 500</td><td class="n">-86</td><td class="n sig">0.044 <span class="corr">(0.220)</span></td></tr><tr><td>P7</td><td class="n">-28 to 16</td><td class="n">27</td><td class="n">0.104 <span class="corr">(0.526)</span></td><td class="n">-12 to -8</td><td class="n">-4</td><td class="n">0.594 <span class="corr">(0.996)</span></td><td class="n">-68 to -64</td><td class="n">6</td><td class="n">0.465 <span class="corr">(0.970)</span></td></tr><tr><td>P8</td><td class="n">-48 to -44</td><td class="n">4</td><td class="n">0.596 <span class="corr">(0.992)</span></td><td class="n">&ndash;</td><td class="n">0</td><td class="n">1.000 <span class="corr">(1.000)</span></td><td class="n">-48 to -40</td><td class="n">7</td><td class="n">0.436 <span class="corr">(0.953)</span></td></tr><tr><td>O1</td><td class="n">-16 to -8</td><td class="n">7</td><td class="n">0.462 <span class="corr">(0.947)</span></td><td class="n">-200 to -188</td><td class="n">-10</td><td class="n">0.322 <span class="corr">(0.859)</span></td><td class="n">-200 to -188</td><td class="n">-12</td><td class="n">0.315 <span class="corr">(0.835)</span></td></tr><tr><td>O2</td><td class="n">400 to 428</td><td class="n">-18</td><td class="n">0.157 <span class="corr">(0.678)</span></td><td class="n">420 to 500</td><td class="n">-72</td><td class="n sig">0.006 <span class="corr">(0.230)</span></td><td class="n">360 to 500</td><td class="n">-101</td><td class="n sig">0.017 <span class="corr">(0.179)</span></td></tr><tr class="foot"><td>epochs</td><td colspan="3" class="n">15 circles / 75 squares</td><td colspan="3" class="n">15 circles / 74 squares</td><td colspan="3" class="n">30 circles / 149 squares</td></tr></table>
+<p class="cap"><b>Table 2.</b> Largest cluster per channel, &minus;0.2 to 0.5 s epochs, 1000 permutations. &Sigma;t: cluster sum of t (negative: circles below squares). p: function 2; in brackets: corrected over the 8 channels. Highlighted: p &lt; 0.05. Channels with p &lt; 0.05: run 1 none; run 2 C4, O2; pooled C4, O2.</p>
+</div>
+<figure>
+  <img src="img/pooled_main_erp_all.png" alt="">
+  <figcaption><b>Figure 8.</b> Both runs pooled (30 circles, 149 squares), as Figure 5.</figcaption>
+</figure>
+<figure class="narrow"><img src="img/pooled_main_erp_significant.png" alt=""><figcaption><b>Figure 9.</b> Both runs pooled: the channels with a permutation p-value below 0.05 (C4, O2), mean &plusmn; SEM z-scored response to circles (red) and squares (blue); the shaded band is the channel&rsquo;s largest cluster.</figcaption></figure>
+<figure>
+  <img src="img/run2_main_null.png" alt="">
+  <figcaption><b>Figure 10.</b> Run 2: permutation distribution of the largest |cluster sum of t| for each channel (1000 random partitions) and the observed value (red line). The p-value is the fraction of the histogram at or to the right of the red line.</figcaption>
+</figure>
+<figure>
+  <img src="img/pooled_evoked_microvolts.png" alt="">
+  <figcaption><b>Figure 11.</b> Both runs pooled: evoked responses in microvolts (baseline-corrected averages, not z-scored).</figcaption>
+</figure>
+<p><b>Run 1</b> shows no significant difference on any channel (Figure 5; smallest p = 0.104 at P7, for a cluster around stimulus onset that cannot be a response to the stimulus). The largest post-stimulus cluster is a short negativity for circles at O2 (400&ndash;428 ms, p = 0.157). On FP1, FP2 and C3 not a single sample reached p &lt; 0.05. <b>Run 2</b> shows significant clusters at <b>O2</b> (420&ndash;500 ms, p = 0.006) and <b>C4</b> (360&ndash;500 ms, p = 0.023), in both cases with circles <i>more negative</i> than squares, by -12.9 &micro;V and -19.8 &micro;V on average over the cluster (Figures 6 and 7). <b>Pooled</b>, the same two channels are significant with the same sign and timing: O2 360&ndash;500 ms, p = 0.017, -11.8 &micro;V; C4 364&ndash;500 ms, p = 0.044, -15.3 &micro;V (Figures 8, 9 and 11). After correction over the 8 channels no p-value is below 0.05 in any data set (smallest: 0.174, C4 in run 2).</p>
+
+<h3>4.3 Longer epochs (&minus;0.2 to 0.8 s)</h3>
+<div class="tablewrap">
+<table class="stats"><tr><th rowspan="2">Channel</th><th colspan="3" class="grp">Run 1</th><th colspan="3" class="grp">Run 2</th><th colspan="3" class="grp">Pooled</th></tr><tr><th class="n">cluster (ms)</th><th class="n">&Sigma;t</th><th class="n">p (corr.)</th><th class="n">cluster (ms)</th><th class="n">&Sigma;t</th><th class="n">p (corr.)</th><th class="n">cluster (ms)</th><th class="n">&Sigma;t</th><th class="n">p (corr.)</th></tr><tr><td>FP1</td><td class="n">&ndash;</td><td class="n">0</td><td class="n">1.000 <span class="corr">(1.000)</span></td><td class="n">-192 to -192</td><td class="n">-2</td><td class="n">0.609 <span class="corr">(0.999)</span></td><td class="n">&ndash;</td><td class="n">0</td><td class="n">1.000 <span class="corr">(1.000)</span></td></tr><tr><td>FP2</td><td class="n">&ndash;</td><td class="n">0</td><td class="n">1.000 <span class="corr">(1.000)</span></td><td class="n">144 to 212</td><td class="n">-40</td><td class="n">0.126 <span class="corr">(0.530)</span></td><td class="n">220 to 316</td><td class="n">-58</td><td class="n">0.130 <span class="corr">(0.481)</span></td></tr><tr><td>C3</td><td class="n">&ndash;</td><td class="n">0</td><td class="n">1.000 <span class="corr">(1.000)</span></td><td class="n">484 to 628</td><td class="n">-94</td><td class="n sig">0.035 <span class="corr">(0.245)</span></td><td class="n">&ndash;</td><td class="n">0</td><td class="n">1.000 <span class="corr">(1.000)</span></td></tr><tr><td>C4</td><td class="n">-132 to -120</td><td class="n">-10</td><td class="n">0.384 <span class="corr">(0.942)</span></td><td class="n">360 to 556</td><td class="n">-126</td><td class="n sig">0.022 <span class="corr">(0.162)</span></td><td class="n">364 to 512</td><td class="n">-93</td><td class="n">0.059 <span class="corr">(0.284)</span></td></tr><tr><td>P7</td><td class="n">-28 to 16</td><td class="n">27</td><td class="n">0.157 <span class="corr">(0.704)</span></td><td class="n">-12 to -8</td><td class="n">-4</td><td class="n">0.615 <span class="corr">(0.997)</span></td><td class="n">-68 to -64</td><td class="n">6</td><td class="n">0.526 <span class="corr">(0.991)</span></td></tr><tr><td>P8</td><td class="n">-48 to -44</td><td class="n">4</td><td class="n">0.695 <span class="corr">(0.998)</span></td><td class="n">&ndash;</td><td class="n">0</td><td class="n">1.000 <span class="corr">(1.000)</span></td><td class="n">-48 to -40</td><td class="n">7</td><td class="n">0.535 <span class="corr">(0.980)</span></td></tr><tr><td>O1</td><td class="n">-16 to -8</td><td class="n">7</td><td class="n">0.568 <span class="corr">(0.979)</span></td><td class="n">-200 to -188</td><td class="n">-10</td><td class="n">0.401 <span class="corr">(0.920)</span></td><td class="n">-200 to -188</td><td class="n">-12</td><td class="n">0.426 <span class="corr">(0.920)</span></td></tr><tr><td>O2</td><td class="n">400 to 428</td><td class="n">-18</td><td class="n">0.205 <span class="corr">(0.822)</span></td><td class="n">420 to 580</td><td class="n">-153</td><td class="n sig">&lt;&nbsp;0.001 <span class="corr">(0.123)</span></td><td class="n">360 to 576</td><td class="n">-154</td><td class="n sig">0.009 <span class="corr">(0.116)</span></td></tr><tr class="foot"><td>epochs</td><td colspan="3" class="n">15 circles / 75 squares</td><td colspan="3" class="n">15 circles / 74 squares</td><td colspan="3" class="n">30 circles / 149 squares</td></tr></table>
+<p class="cap"><b>Table 3.</b> As Table 2 for &minus;0.2 to 0.8 s epochs. Channels with p &lt; 0.05: run 1 none; run 2 C3, C4, O2; pooled O2.</p>
+</div>
+<figure>
+  <img src="img/pooled_extended_erp_all.png" alt="">
+  <figcaption><b>Figure 12.</b> Both runs pooled, &minus;200 to 800 ms epochs, as Figure 8.</figcaption>
+</figure>
+<figure class="narrow"><img src="img/run2_extended_erp_significant.png" alt=""><figcaption><b>Figure 13.</b> Run 2, &minus;0.2 to 0.8 s: the channels with a permutation p-value below 0.05 (C3, C4, O2), mean &plusmn; SEM z-scored response to circles (red) and squares (blue); the shaded band is the channel&rsquo;s largest cluster.</figcaption></figure>
+<figure class="narrow"><img src="img/pooled_extended_erp_significant.png" alt=""><figcaption><b>Figure 14.</b> Both runs pooled, &minus;0.2 to 0.8 s: the channels with a permutation p-value below 0.05 (O2), mean &plusmn; SEM z-scored response to circles (red) and squares (blue); the shaded band is the channel&rsquo;s largest cluster.</figcaption></figure>
+<p>With the longer window the O2 negativity extends to about 580 ms and becomes stronger (run 2: 420&ndash;580 ms, p &lt; 0.001; pooled: 360&ndash;576 ms, p = 0.009). In run 2, C3 also shows a late negative cluster (484&ndash;628 ms, p = 0.035; Figure 13), but its mean difference of -122.1 &micro;V is far larger than any ERP, C3 is the noisiest channel, and in the default window its largest cluster had the opposite sign. We therefore attribute it to a few large artefacts in the circle epochs rather than to a brain response. The pooled C4 cluster hardly changes but its p-value rises to 0.059: a longer window gives the random partitions more chances to produce a large cluster, so the same observed cluster is less extreme. Run 1 remains without significant channels.</p>
+
+<h2>5. Discussion</h2>
+<h3>5.1 What differs between targets and non-targets</h3>
+<p>The one consistent finding is a late, sustained <b>negativity for targets</b> at O2 and C4, starting about 360 ms after stimulus onset and lasting into the 500&ndash;600 ms range, roughly 10&ndash;20 &micro;V in size. It is significant in run 2; run 1 shows only a non-significant trend in the same direction at O2 (400&ndash;428 ms, p = 0.157) and no post-stimulus cluster at C4. The pooled data are significant as well, but they include run 2 and are not an independent replication: pooling makes the effect significant overall while it is driven mainly by run 2. The effect appears on two of the cleanest electrodes, which is expected: with 15 targets per run, an effect of this size can only be detected where the background noise is low.</p>
+<p>We did not observe the textbook P300, a positivity for targets around 300&ndash;600 ms. There are several reasons, and our data cannot fully separate them:</p>
+<ul>
+  <li><b>Montage.</b> The P300 is largest at the midline (Pz, Cz), which our 8-electrode montage does not cover, and much smaller at lateral sites such as P7/P8 and O1/O2. The sites closest to the midline, C3 and C4, behaved differently: C3 was among the noisiest channels, and the clean C4 shows a negativity rather than a positivity.</li>
+  <li><b>Motor response.</b> Only circles were followed by a button press. Reaction times in such tasks are typically 300&ndash;500 ms (we did not record them), so movement-related potentials over the central motor cortex, and any small movement of the cables or headset during the press, overlap with the time window of the effect and are confounded with target status. A lateralised motor potential would appear over the hemisphere opposite the responding hand (C4 for the left hand); we did not note which hand was used, so this explanation for C4 can neither be confirmed nor excluded.</li>
+  <li><b>Stimulus differences.</b> Circles and squares differ not only in task relevance but also in colour, shape and area (the blue square covers about 7 times as many pixels as the red circle), so part of any difference may be sensory.</li>
+  <li><b>Eye activity.</b> At FP2 the circle response falls below the square response from about 50 ms and is lowest near 270 ms (pooled p = 0.088). Since blinks are positive at FP2, this is consistent with fewer blinks or a downward gaze (e.g. towards the button) after targets, so eye activity also differed between the conditions.</li>
+</ul>
+
+<h3>5.2 Why the cluster-based test matters here</h3>
+<p>Our data illustrate the multiple comparisons problem directly. In run 1, a plain t-test at every sample marks 67 of 1408 samples as significant (p &lt; 0.05), about the 70 expected by chance alone, in a run in which the permutation test detects no reliable effect. A sample-by-sample analysis would therefore &ldquo;discover&rdquo; effects in noise. The opposite correction is too strict: with Bonferroni (p &lt; 0.05/1408) not a single sample survives in any of the default-window analyses, not even pooled, where 166 samples reach p &lt; 0.05 (in the longer window only run 2 keeps 7 of 2008 samples). The cluster statistic sits in between. It ignores scattered, isolated crossings, which random partitions produce just as often, but it accumulates evidence over the 21&ndash;55 adjacent samples of the O2 and C4 clusters, and only random partitions that happen to produce an equally long and strong cluster count against it. This is the sensitivity gain that Maris and Oostenveld describe, obtained without giving up control of the false-alarm rate over time. Because the inference is about the cluster as a whole, the exact start and end of the clusters (e.g. 360 vs 420 ms) should not be over-interpreted.</p>
+
+<h3>5.3 How strong is the evidence?</h3>
+<p>The manual&rsquo;s test is applied to each of the 8 channels separately. If no channel had any effect, the chance that at least one of them reaches p &lt; 0.05 would be about 1 &minus; 0.95<sup>8</sup> &asymp; 34 % if the channels were independent (at most 8 &times; 5 % = 40 %). When each channel is compared with the distribution of the largest statistic over all 8 channels, none of our clusters remains below 0.05 (smallest corrected p = 0.116, O2 pooled, long window). The target negativity at O2/C4 is therefore best described as a consistent but tentative effect: the agreement in direction and latency between run 2 and the trend in run 1 speaks for it, but both runs come from the same subject and session; the channel-wise correction and the small number of targets ask for a replication before it is taken as established.</p>
+
+<h3>5.4 Limitations and what we would do differently</h3>
+<ul>
+  <li><b>Electrode contact.</b> C3, P8 and FP2 had 6&ndash;14 times the standard deviation of the cleanest channels. Checking the impedances and re-gelling these sites before recording would likely have made the C3/P8 responses usable. The per-epoch z-score limits the influence of noisy trials but cannot recover a signal buried in noise.</li>
+  <li><b>Few targets.</b> 15 circles per run leave a noisy target average (wide red SEM bands). More runs, or a video with more targets, would help; pooling the two runs made the O2 effect significant overall, although it is driven mainly by run 2.</li>
+  <li><b>Confounds.</b> The response should be balanced across conditions (e.g. a different button for squares) or recorded on a second digital input, so that motor activity could be separated from target processing and reaction times measured. Counterbalancing colour and shape would remove the sensory confound.</li>
+  <li><b>Marker hardware.</b> The slow photoresistor merged the sync flashes and missed one trial, and the jumper wiring couples into P8. Shorter or shielded wiring and keeping the marker cable away from the electrodes would avoid both problems; matching onsets to the known video timetable made the analysis robust to them.</li>
+  <li><b>Artefacts.</b> No trials were rejected and blinks were not removed. Excluding trials with blinks, or removing them with ICA as in Lab 3, would reduce the frontal and possibly the central noise.</li>
+</ul>
+
+<h2>6. Conclusion</h2>
+<p>We recorded two runs of a visual oddball task with a photoresistor marker, epoched 179 trials (30 targets) with MNE and compared targets with non-targets on each electrode using our own implementation of the cluster-based permutation test of Maris and Oostenveld (2007), which agrees with MNE&rsquo;s implementation. Targets were accompanied by a sustained negativity relative to non-targets at O2 and C4 from about 360 ms on. It is significant in the second run and in the pooled data (O2 p = 0.017, C4 p = 0.044), only a non-significant trend in the same direction in the first run, and not significant after correcting over the 8 channels. A classic midline P300 could not be assessed with this montage, and the button press and stimulus differences are plausible contributors to the effect. The data also show why the cluster test is needed: an uncorrected sample-wise test finds as many &ldquo;effects&rdquo; as chance predicts in a run where the permutation test finds no reliable difference, while Bonferroni finds none in the default window even where the cluster test does.</p>
+
+<h2>References</h2>
+<div class="refs">
+  <p>Maris, E., &amp; Oostenveld, R. (2007). Nonparametric statistical testing of EEG- and MEG-data. <i>Journal of Neuroscience Methods, 164</i>(1), 177&ndash;190. https://doi.org/10.1016/j.jneumeth.2007.03.024</p>
+  <p>Gramfort, A., et al. (2013). MEG and EEG data analysis with MNE-Python. <i>Frontiers in Neuroscience, 7</i>, 267. https://doi.org/10.3389/fnins.2013.00267</p>
+  <p>Polich, J. (2007). Updating P300: An integrative theory of P3a and P3b. <i>Clinical Neurophysiology, 118</i>(10), 2128&ndash;2148. https://doi.org/10.1016/j.clinph.2007.04.019</p>
+</div>
+
+<h2 class="pagebreak">Appendix A. Code: <code>lab4_stats.py</code> (functions 1 and 2)</h2>
+<pre>&quot;&quot;&quot;
+Lab 4: cluster-based nonparametric statistics (Maris &amp; Oostenveld, 2007).
+
+Function 1, `nonparametric_test`, is the single-sensor cluster-mass statistic of
+section 3.1.1 of the paper; function 2, `permutation_test`, is the permutation
+(Monte Carlo) procedure of section 2.3 that turns it into a p-value.
+
+Both work channel by channel on arrays shaped (n_epochs, n_channels, n_times).
+&quot;&quot;&quot;
+
+from typing import List, Optional, Tuple
+
+import numpy as np
+from scipy import ndimage, stats
+
+SAMPLE_ALPHA = 0.05  # threshold that selects samples for clustering (paper: 97.5th t quantile)
+DEFAULT_N_PERM = 1000
+
+Cluster = Optional[Tuple[int, int]]  # (first sample, last sample + 1) of a channel&#x27;s biggest cluster
+
+
+def _check_datasets(dataset_a: np.ndarray, dataset_b: np.ndarray) -&gt; None:
+    if dataset_a.ndim != 3 or dataset_b.ndim != 3:
+        raise ValueError(&quot;datasets must be shaped (n_epochs, n_channels, n_times)&quot;)
+    if dataset_a.shape[1:] != dataset_b.shape[1:]:
+        raise ValueError(
+            f&quot;datasets differ in (n_channels, n_times): {dataset_a.shape[1:]} vs {dataset_b.shape[1:]}&quot;
+        )
+    if len(dataset_a) &lt; 2 or len(dataset_b) &lt; 2:
+        raise ValueError(&quot;each condition needs at least 2 epochs for a t-test&quot;)
+
+
+def _largest_cluster(t_values: np.ndarray, significant: np.ndarray) -&gt; Tuple[float, Cluster]:
+    &quot;&quot;&quot;Largest (in absolute value) sum of t over runs of adjacent significant samples.
+
+    Positive and negative t-values are clustered separately, as the paper
+    prescribes for a two-sided test, so a cluster never mixes signs.
+    &quot;&quot;&quot;
+    best_stat, best_cluster = 0.0, None
+    for same_sign in (significant &amp; (t_values &gt; 0), significant &amp; (t_values &lt; 0)):
+        labels, n_clusters = ndimage.label(same_sign)
+        for slc in ndimage.find_objects(labels):
+            if slc is None:
+                continue
+            cluster_stat = float(t_values[slc[0]].sum())
+            if abs(cluster_stat) &gt; abs(best_stat):
+                best_stat, best_cluster = cluster_stat, (slc[0].start, slc[0].stop)
+    return best_stat, best_cluster
+
+
+def nonparametric_test(
+    dataset_a: np.ndarray,
+    dataset_b: np.ndarray,
+    return_clusters: bool = False,
+):
+    &quot;&quot;&quot;Function 1: cluster-level test statistic of each channel (section 3.1.1).
+
+    1. Two-sample t-test at every (channel, time) sample across the two conditions
+       -&gt; t-statistics and p-values, both shaped (n_channels, n_times).
+    2. For each channel: find clusters of adjacent samples with p &lt; 0.05 (positive
+       and negative t separately), sum the t-values in each cluster and keep the
+       cluster whose sum is largest in absolute value.
+
+    Parameters
+    ----------
+    dataset_a, dataset_b : ndarray, shape (n_epochs, n_channels, n_times)
+        Voltage traces of condition A and B (the epoch counts may differ).
+    return_clusters : bool
+        Also return where each channel&#x27;s biggest cluster is.
+
+    Returns
+    -------
+    clus_tstat : ndarray, shape (n_channels,)
+        Signed sum of t of each channel&#x27;s biggest cluster (0 if no sample has p &lt; 0.05).
+    clusters : list of (start, stop) or None, only if return_clusters
+        Sample range [start, stop) of that cluster.
+    &quot;&quot;&quot;
+    _check_datasets(dataset_a, dataset_b)
+    t_values, p_values = stats.ttest_ind(dataset_a, dataset_b, axis=0)
+    significant = p_values &lt; SAMPLE_ALPHA
+
+    clus_tstat = np.zeros(t_values.shape[0])
+    clusters: List[Cluster] = []
+    for channel in range(t_values.shape[0]):
+        clus_tstat[channel], cluster = _largest_cluster(t_values[channel], significant[channel])
+        clusters.append(cluster)
+
+    if return_clusters:
+        return clus_tstat, clusters
+    return clus_tstat
+
+
+def permutation_test(
+    dataset_a: np.ndarray,
+    dataset_b: np.ndarray,
+    n_perm: int = DEFAULT_N_PERM,
+    seed: Optional[int] = 0,
+    return_null: bool = False,
+):
+    &quot;&quot;&quot;Function 2: permutation p-value of each channel&#x27;s biggest cluster (section 2.3).
+
+    1. Function 1 on the real data gives the observed statistics.
+    2. Pool the epochs of both conditions (n_a + n_b, n_channels, n_times).
+    3. Shuffle the pooled epochs and split them into two sets of the original sizes.
+    4. Function 1 on that random partition gives one draw of the null distribution.
+    5. Repeat 3-4 n_perm times.
+    6. p = proportion of random partitions whose statistic is larger (in absolute
+       value, i.e. a two-sided test) than the observed one.
+
+    Parameters
+    ----------
+    dataset_a, dataset_b : ndarray, shape (n_epochs, n_channels, n_times)
+    n_perm : int, optional
+        Number of random partitions, by default 1000.
+    seed : int or None
+        Seed of the random generator (None = not reproducible).
+    return_null : bool
+        Also return the null distribution, shape (n_perm, n_channels).
+
+    Returns
+    -------
+    clus_pvals : ndarray, shape (n_channels,)
+    null : ndarray, only if return_null
+    &quot;&quot;&quot;
+    _check_datasets(dataset_a, dataset_b)
+    if n_perm &lt; 1:
+        raise ValueError(&quot;n_perm must be at least 1&quot;)
+
+    observed = nonparametric_test(dataset_a, dataset_b)
+    pooled = np.concatenate([dataset_a, dataset_b], axis=0)
+    n_a = len(dataset_a)
+    rng = np.random.default_rng(seed)
+
+    null = np.empty((n_perm, pooled.shape[1]))
+    for i in range(n_perm):
+        order = rng.permutation(len(pooled))
+        null[i] = nonparametric_test(pooled[order[:n_a]], pooled[order[n_a:]])
+
+    # &quot;&gt;=&quot; so that a channel without any cluster (statistic 0) gets p = 1, not 0
+    clus_pvals = (np.abs(null) &gt;= np.abs(observed)).mean(axis=0)
+    if return_null:
+        return clus_pvals, null
+    return clus_pvals
+</pre>
+<h2 class="pagebreak">Appendix B. Code: <code>lab4_analysis.py</code> (pipeline)</h2>
+<p>The figure code (<code>lab4_plots.py</code>), the synthetic test recording (<code>lab4_synthetic.py</code>) and the tests (<code>test_lab4.py</code>) are in the group repository.</p>
+<pre>&quot;&quot;&quot;
+Lab 4: event-related potentials to red circles (targets, button press) vs blue
+squares (non-targets), tested with the cluster-based permutation test of
+Maris &amp; Oostenveld (2007).
+
+Pipeline (the &quot;Data analysis&quot; section of the manual, in order):
+
+    1. load the OpenBCI .txt file, rename EXG channels and D13 (&#x27;Other.2&#x27;) -&gt; photoresistor
+    2. build an MNE RawArray (channels x samples, EEG in volts, photoresistor = &#x27;stim&#x27;)
+    3. photoresistor onsets -&gt; events -&gt; annotations
+    4. band-pass 1-50 Hz
+    5. crop from 0.5 s after the video start to 1 s after the last video TTL, epoch (90 trials)
+    6. split the epochs with circle_mask.csv (circle = 1, square = 0)
+    7. z-score every epoch against its own baseline
+    8. function 1 + function 2 (lab4_stats.py): cluster statistic and permutation p-value per channel
+    9. plot the evoked responses of the channels with p &lt; 0.05
+
+Run from this folder:
+
+    python lab4_analysis.py                    # auto-finds the single OpenBCI-RAW-*.txt in this folder
+    python lab4_analysis.py path/to/file.txt   # or name the recording explicitly
+    python lab4_analysis.py --demo             # synthetic recording, to try the pipeline without data
+
+Figures go to report/img, every number to report/results.json.
+
+============================ EDIT THIS SECTION ============================
+Paths are relative to this file. Use forward slashes &quot;/&quot;.
+&quot;&quot;&quot;
+
+# Recordings to analyse, {tag: path}. Each is analysed on its own (as the manual
+# describes) and, if there are several, also pooled. {} = auto-detect every
+# OpenBCI GUI .txt recording under this folder.
+RECORDING_FILES = {
+    &quot;run1&quot;: &quot;Data/trial1.txt&quot;,
+    &quot;run2&quot;: &quot;Data/trial2.txt&quot;,
+}
+CIRCLE_MASK_FILE = &quot;circle_mask.csv&quot;
+SAVE_DIR = &quot;report/img&quot;
+RESULTS_FILE = &quot;report/results.json&quot;
+
+PHOTORESISTOR_COLUMN = &quot;Other.2&quot;  # D13 per the manual; other &#x27;Other&#x27;/&#x27;Analog&#x27; columns are tried if it is not a TTL
+
+BAND_LOW_HZ = 1.0
+BAND_HIGH_HZ = 50.0
+# The 1-50 Hz band-pass alone leaves a 60 Hz peak (MNE&#x27;s default transition band
+# reaches 62.5 Hz), but the manual asks that no line noise is left: add a notch.
+NOTCH_HZ = 60.0  # None = band-pass only
+
+CROP_START_AFTER_VIDEO_START_S = 0.5  # manual: &quot;around 0.5 s after the video start&quot;
+CROP_END_AFTER_LAST_TTL_S = 1.0  # manual: &quot;up to 1 second after the last TTL&quot;
+
+EPOCH_TMIN_S = -0.2  # MNE defaults, as the manual asks (&quot;epoch using the default settings&quot;)
+EPOCH_TMAX_S = 0.5
+EXTENDED_TMAX_S = 0.8  # supplementary analysis with the FAQ&#x27;s -0.2..0.8 s window (late P300)
+
+N_PERMUTATIONS = 1000
+P_THRESHOLD = 0.05
+RANDOM_SEED = 0
+
+# =========================== END OF EDITABLE SECTION ===========================
+
+import argparse
+import inspect
+import json
+import os
+import re
+import sys
+import warnings
+from typing import Dict, List, NamedTuple, Optional, Sequence, Tuple
+
+import matplotlib
+
+matplotlib.use(&quot;Agg&quot;)  # figures are only saved, never shown
+
+import mne
+import numpy as np
+import pandas as pd
+from scipy import stats
+
+import lab4_stats
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+CHANNEL_NAMES = [&quot;FP1&quot;, &quot;FP2&quot;, &quot;C3&quot;, &quot;C4&quot;, &quot;P7&quot;, &quot;P8&quot;, &quot;O1&quot;, &quot;O2&quot;]
+STIM_CHANNEL = &quot;photoresistor&quot;
+EXG_PREFIX = &quot;EXG Channel&quot;
+HEADER_ROWS = 4  # pandas header=4: row 5 holds the column names
+MICROVOLT_TO_VOLT = 1e-6
+SAMPLE_RATE_PATTERN = re.compile(r&quot;%\s*Sample Rate\s*=\s*([\d.]+)\s*Hz&quot;, re.IGNORECASE)
+SAMPLE_INDEX_MODULO = 256  # the Cyton packet counter wraps at 255
+COUNTER_RESET_WINDOW_SAMPLES = 500  # a counter reset can only happen right after the stream starts
+OPENBCI_FIRST_LINE = &quot;%OpenBCI Raw EEG Data&quot;
+SYNC_END_MARGIN_S = 0.05  # crop at least this long after the sync TTL has gone low again
+SKIP_DIRS = {&quot;.venv&quot;, &quot;report&quot;, &quot;demo&quot;, &quot;__pycache__&quot;, &quot;.pytest_cache&quot;}
+
+# Timing of Lab4_video.mp4, measured frame by frame (20 fps, every flash is one frame = 50 ms):
+# 5 sync flashes 100 ms apart at 5.0-5.4 s, then 90 stimuli every 1.2 s from 6.8 s;
+# each stimulus (red circle or blue square on grey) stays on screen for 0.9 s.
+VIDEO_SYNC_FLASHES = 5
+VIDEO_SYNC_INTERVAL_S = 0.1
+VIDEO_FIRST_STIMULUS_AFTER_SYNC_S = 1.8
+VIDEO_STIMULUS_INTERVAL_S = 1.2
+VIDEO_FLASH_DURATION_S = 0.05
+VIDEO_STIMULUS_DURATION_S = 0.9
+N_TRIALS = 90
+
+SYNC_MAX_GAP_S = 0.2  # onsets closer than this belong to the same sync burst
+SYNC_MIN_FLASHES = 2
+TRIAL_MATCH_TOLERANCE_S = 0.15  # a detected onset this close to a predicted trial is that trial
+FIRST_TRIAL_SEARCH_S = TRIAL_MATCH_TOLERANCE_S  # must stay &lt; 0.2 s (see match_video_trials)
+ANCHOR_CHECK_TRIALS = 3  # a sync candidate must be followed by one of the first 3 trials on time
+MIN_TRIALS = 10  # fewer matched trials than this: something is wrong, stop
+DRIFT_FIT_TRIALS = 10  # trials used to extrapolate the next onset (absorbs clock drift)
+MIN_TTL_EDGES = 10
+FLAT_CHANNEL_STD_UV = 0.5
+
+
+# --------------------------------------------------------------------------
+# Steps 1-2: loading and building the MNE object
+# --------------------------------------------------------------------------
+def parse_sample_rate(path: str) -&gt; float:
+    &quot;&quot;&quot;Sampling rate (Hz) from the &#x27;%Sample Rate = 250 Hz&#x27; header line.&quot;&quot;&quot;
+    with open(path, &quot;r&quot;, encoding=&quot;utf-8&quot;) as handle:
+        for _ in range(HEADER_ROWS):
+            match = SAMPLE_RATE_PATTERN.search(handle.readline())
+            if match:
+                return float(match.group(1))
+    raise ValueError(&quot;No &#x27;%Sample Rate = ... Hz&#x27; line in the header of &quot; + path)
+
+
+def run_lengths(state: np.ndarray) -&gt; np.ndarray:
+    &quot;&quot;&quot;Lengths of the runs of True in a boolean array.&quot;&quot;&quot;
+    edges = np.diff(np.r_[0, state.astype(int), 0])
+    return np.flatnonzero(edges == -1) - np.flatnonzero(edges == 1)
+
+
+def ttl_polarity(values: pd.Series) -&gt; Optional[bool]:
+    &quot;&quot;&quot;True if &lt;values&gt; look like the photoresistor TTL (two levels, brief highs),
+    False if they look like an inverted TTL, None if they are not a TTL at all.
+
+    The polarity is decided by the typical (median) run length: the video&#x27;s
+    markers are 50 ms long while the dark gaps last ~1.15 s, and a few long
+    bright stretches (desktop before/after the video) do not move the median.
+    &quot;&quot;&quot;
+    finite = values.to_numpy(dtype=float)
+    finite = finite[np.isfinite(finite)]
+    levels = np.unique(finite)
+    if len(levels) != 2:
+        return None
+    high = finite == levels[1]
+    if int(np.count_nonzero(np.diff(high.astype(int)) == 1)) &lt; MIN_TTL_EDGES:
+        return None
+    return bool(np.median(run_lengths(high)) &lt;= np.median(run_lengths(~high)))
+
+
+def binarize_ttl(values: pd.Series, normal_polarity: bool) -&gt; np.ndarray:
+    &quot;&quot;&quot;0/1 version of a two-level TTL column; 1 = bright screen.&quot;&quot;&quot;
+    data = values.to_numpy(dtype=float)
+    midpoint = (np.nanmin(data) + np.nanmax(data)) / 2
+    bright = data &gt; midpoint if normal_polarity else data &lt; midpoint
+    return bright.astype(float)
+
+
+def choose_photoresistor_column(df: pd.DataFrame, preferred: str) -&gt; Tuple[str, bool]:
+    &quot;&quot;&quot;Column holding D13 and whether it has the expected polarity (bright = 1).
+
+    The manual says &#x27;Other.2&#x27;. If that column is not a TTL (e.g. another GUI
+    version puts D13 elsewhere) the other &#x27;Other&#x27;/&#x27;Analog&#x27; columns are tried.
+    &quot;&quot;&quot;
+    others = [c for c in df.columns if c != preferred and c.startswith((&quot;Other&quot;, &quot;Analog Channel&quot;))]
+    for column in ([preferred] if preferred in df.columns else []) + others:
+        polarity = ttl_polarity(df[column])
+        if polarity is not None:
+            return column, polarity
+    raise ValueError(
+        &quot;No photoresistor TTL found: none of the columns &quot;
+        + &quot;, &quot;.join([preferred] + others)
+        + &quot; toggles between two levels. Was the Digital Read widget switched on?&quot;
+    )
+
+
+def load_recording(path: str, photoresistor_column: str = PHOTORESISTOR_COLUMN) -&gt; Tuple[pd.DataFrame, Dict]:
+    &quot;&quot;&quot;OpenBCI .txt -&gt; DataFrame with columns FP1..O2 (uV) and &#x27;photoresistor&#x27; (0/1).
+
+    Also returns a dict describing the file (photoresistor column, lost packets).
+    &quot;&quot;&quot;
+    raw_df = pd.read_csv(path, header=HEADER_ROWS, index_col=False, low_memory=False)
+    raw_df.columns = [c.strip() for c in raw_df.columns]
+
+    exg = [c for c in raw_df.columns if c.startswith(EXG_PREFIX)]
+    if len(exg) != len(CHANNEL_NAMES):
+        raise ValueError(f&quot;Expected {len(CHANNEL_NAMES)} &#x27;{EXG_PREFIX} *&#x27; columns, found {len(exg)}&quot;)
+    column, polarity = choose_photoresistor_column(raw_df, photoresistor_column)
+
+    df = raw_df[exg].rename(columns=dict(zip(exg, CHANNEL_NAMES))).astype(float)
+    df = df.assign(**{STIM_CHANNEL: binarize_ttl(raw_df[column], polarity)})
+
+    info = {&quot;photoresistor_column&quot;: column, &quot;photoresistor_inverted&quot;: not polarity}
+    info.update(count_lost_samples(raw_df.get(&quot;Sample Index&quot;)))
+    return df, info
+
+
+def count_lost_samples(sample_index: Optional[pd.Series]) -&gt; Dict:
+    &quot;&quot;&quot;Gaps in the Cyton packet counter (0..255): each gap is lost radio packets.
+
+    A jump to 0 from anything but 255 within the first 2 s is the counter being
+    reset (the GUI does this once right after the stream starts), not lost data.
+    &quot;&quot;&quot;
+    if sample_index is None:
+        return {&quot;packet_gaps&quot;: None, &quot;lost_samples&quot;: None, &quot;counter_resets&quot;: None}
+    index = sample_index.to_numpy(dtype=float).astype(int)
+    steps = np.diff(index) % SAMPLE_INDEX_MODULO
+    early = np.arange(len(steps)) &lt; COUNTER_RESET_WINDOW_SAMPLES
+    resets = early &amp; (index[1:] == 0) &amp; (index[:-1] != SAMPLE_INDEX_MODULO - 1)
+    gaps = steps[(steps != 1) &amp; ~resets]
+    lost = int(np.sum((gaps - 1) % SAMPLE_INDEX_MODULO))
+    return {&quot;packet_gaps&quot;: int(len(gaps)), &quot;lost_samples&quot;: lost, &quot;counter_resets&quot;: int(resets.sum())}
+
+
+def build_raw(df: pd.DataFrame, sfreq: float) -&gt; mne.io.RawArray:
+    &quot;&quot;&quot;DataFrame (samples x channels, uV) -&gt; RawArray (channels x samples, V); photoresistor as &#x27;stim&#x27;.&quot;&quot;&quot;
+    eeg_volts = df[CHANNEL_NAMES].T.to_numpy(dtype=float) * MICROVOLT_TO_VOLT  # transpose: channels x samples
+    ttl = df[[STIM_CHANNEL]].T.to_numpy(dtype=float)  # the photoresistor stays 0/1
+    data = np.vstack([eeg_volts, ttl])
+    info = mne.create_info(
+        ch_names=CHANNEL_NAMES + [STIM_CHANNEL],
+        sfreq=sfreq,
+        ch_types=[&quot;eeg&quot;] * len(CHANNEL_NAMES) + [&quot;stim&quot;],
+    )
+    return mne.io.RawArray(data, info, verbose=&quot;ERROR&quot;)
+
+
+# --------------------------------------------------------------------------
+# Step 3: events and annotations from the photoresistor
+# --------------------------------------------------------------------------
+def find_flash_events(raw: mne.io.BaseRaw) -&gt; np.ndarray:
+    &quot;&quot;&quot;Rising edges (dark -&gt; bright) of the photoresistor channel, MNE events array.&quot;&quot;&quot;
+    return mne.find_events(
+        raw, stim_channel=STIM_CHANNEL, shortest_event=1, consecutive=&quot;increasing&quot;, verbose=&quot;ERROR&quot;
+    )
+
+
+def annotate_events(raw: mne.io.BaseRaw, events: np.ndarray) -&gt; mne.io.BaseRaw:
+    &quot;&quot;&quot;Copy of &lt;raw&gt; with one &#x27;flash&#x27; annotation per event.&quot;&quot;&quot;
+    annotations = mne.annotations_from_events(
+        events, sfreq=raw.info[&quot;sfreq&quot;], event_desc={1: &quot;flash&quot;}, first_samp=raw.first_samp
+    )
+    annotated = raw.copy()
+    annotated.set_annotations(annotations, verbose=&quot;ERROR&quot;)
+    return annotated
+
+
+class SyncBurst(NamedTuple):
+    first: int  # index into the onset list
+    last: int
+
+    @property
+    def n_flashes(self) -&gt; int:
+        return self.last - self.first + 1
+
+
+def flash_runs(onsets_s: np.ndarray, min_flashes: int) -&gt; List[SyncBurst]:
+    &quot;&quot;&quot;Runs of &gt;= &lt;min_flashes&gt; onsets, each less than 0.2 s after the previous one.&quot;&quot;&quot;
+    runs, start = [], 0
+    for i in range(1, len(onsets_s) + 1):
+        if i == len(onsets_s) or onsets_s[i] - onsets_s[i - 1] &gt; SYNC_MAX_GAP_S:
+            if i - start &gt;= min_flashes:
+                runs.append(SyncBurst(start, i - 1))
+            start = i
+    return runs
+
+
+def find_sync_bursts(onsets_s: np.ndarray) -&gt; List[SyncBurst]:
+    &quot;&quot;&quot;Runs of &gt;= 2 onsets less than 0.2 s apart (the video&#x27;s start-of-video flashes).&quot;&quot;&quot;
+    return flash_runs(onsets_s, SYNC_MIN_FLASHES)
+
+
+def track_trials(onsets_s: np.ndarray, first_trial_s: float) -&gt; np.ndarray:
+    &quot;&quot;&quot;Index (into &lt;onsets_s&gt;) of the onset of each of the 90 trials, -1 if missed.
+
+    Trials are predicted every 1.2 s; once a few are found, the prediction is a
+    line fitted to the last matches, which absorbs drift between the EEG clock
+    and the video clock and the small shifts caused by lost packets.
+    &quot;&quot;&quot;
+    matched = np.full(N_TRIALS, -1)
+    found_k: List[int] = []
+    found_t: List[float] = []
+    for k in range(N_TRIALS):
+        if len(found_k) &gt;= 2:
+            slope, intercept = np.polyfit(found_k[-DRIFT_FIT_TRIALS:], found_t[-DRIFT_FIT_TRIALS:], 1)
+            predicted = intercept + slope * k
+        elif found_k:
+            predicted = found_t[-1] + VIDEO_STIMULUS_INTERVAL_S * (k - found_k[-1])
+        else:
+            predicted = first_trial_s + VIDEO_STIMULUS_INTERVAL_S * k
+        nearest = int(np.argmin(np.abs(onsets_s - predicted)))
+        if abs(onsets_s[nearest] - predicted) &lt;= TRIAL_MATCH_TOLERANCE_S and nearest not in matched:
+            matched[k] = nearest
+            found_k.append(k)
+            found_t.append(float(onsets_s[nearest]))
+    return matched
+
+
+class TrialMatch(NamedTuple):
+    trial_onset: np.ndarray  # (90,) index into the onsets, -1 = trial not detected
+    burst: Optional[SyncBurst]  # the sync flash(es) used as anchor; None = no anchor found
+    video_start_s: float  # time of the first sync flash (estimated if it was not detected)
+
+    @property
+    def anchored(self) -&gt; bool:
+        &quot;&quot;&quot;False if no sync flash was found: then a missed trial 0 would shift every label by one.&quot;&quot;&quot;
+        return self.burst is not None
+
+    @property
+    def n_matched(self) -&gt; int:
+        return int(np.sum(self.trial_onset &gt;= 0))
+
+
+def _first_trial_guess(onsets_s: np.ndarray, predicted: float) -&gt; float:
+    near = np.abs(onsets_s - predicted) &lt;= FIRST_TRIAL_SEARCH_S
+    return float(onsets_s[near][np.argmin(np.abs(onsets_s[near] - predicted))]) if near.any() else predicted
+
+
+def match_video_trials(onsets_s: np.ndarray) -&gt; TrialMatch:
+    &quot;&quot;&quot;Finds the 90 video trials among all photoresistor onsets.
+
+    The recording may also hold flashlight/hand checks, a test playback of the
+    first seconds of the video and a bright desktop after the video ends.
+
+    Every run of flashes (&lt; 0.2 s apart, even a single flash, since a slow
+    photoresistor can merge or miss sync flashes) is tried as the sync burst;
+    its first detected flash may be any of the video&#x27;s 5 sync flashes, so each
+    possibility is tried. Trial 0 is then expected 1.8 s after the first sync
+    flash and the candidate followed by the most trials on the 1.2 s grid wins
+    (ties: the later candidate, i.e. the real run rather than a test playback).
+    A candidate only counts if one of the first 3 trials is found where it is
+    predicted (clock drift is negligible that early), and trial 0 must lie
+    within 0.15 s of its predicted time, so a trial onset taken for a sync
+    flash cannot slide the labels by one or more trials.
+
+    Without any anchor (no sync flash detected at all), every onset is tried as
+    trial 0; the result is then flagged as not anchored.
+    &quot;&quot;&quot;
+    if len(onsets_s) == 0:
+        raise ValueError(&quot;The photoresistor never switched on: no events at all&quot;)
+    best: Optional[TrialMatch] = None
+    for run in flash_runs(onsets_s, 1):
+        for skipped in range(max(VIDEO_SYNC_FLASHES - run.n_flashes, 0) + 1):  # sync flashes missed before it
+            video_start = onsets_s[run.first] - skipped * VIDEO_SYNC_INTERVAL_S
+            first = _first_trial_guess(onsets_s, video_start + VIDEO_FIRST_STIMULUS_AFTER_SYNC_S)
+            candidate = TrialMatch(track_trials(onsets_s, first), run, float(video_start))
+            if not (candidate.trial_onset[:ANCHOR_CHECK_TRIALS] &gt;= 0).any():
+                continue  # nothing where the first trials should be: this run is not the video start
+            if best is None or candidate.n_matched &gt; best.n_matched or (
+                candidate.n_matched == best.n_matched and run.first &gt; best.burst.first
+            ):
+                best = candidate
+    if best is None or best.n_matched &lt; N_TRIALS // 2:
+        for onset in onsets_s:
+            candidate = TrialMatch(track_trials(onsets_s, onset), None, float(onset - VIDEO_FIRST_STIMULUS_AFTER_SYNC_S))
+            if best is None or candidate.n_matched &gt; best.n_matched:
+                best = candidate
+    if best.n_matched &lt; MIN_TRIALS:
+        raise ValueError(f&quot;Only {best.n_matched} photoresistor onsets fit the video&#x27;s 1.2 s trial grid; check photoresistor.png&quot;)
+    return best
+
+
+def trial_times(onsets_s: np.ndarray, match: TrialMatch) -&gt; np.ndarray:
+    &quot;&quot;&quot;Onset time of every trial; missed trials are filled in from a line fit.&quot;&quot;&quot;
+    found = np.flatnonzero(match.trial_onset &gt;= 0)
+    slope, intercept = np.polyfit(found, onsets_s[match.trial_onset[found]], 1)
+    times = intercept + slope * np.arange(N_TRIALS)
+    times[found] = onsets_s[match.trial_onset[found]]
+    return times
+
+
+# --------------------------------------------------------------------------
+# Steps 4-6: filter, crop, epoch, split
+# --------------------------------------------------------------------------
+def bandpass(raw: mne.io.BaseRaw) -&gt; mne.io.BaseRaw:
+    &quot;&quot;&quot;Copy of &lt;raw&gt; band-passed 1-50 Hz, plus a 60 Hz notch (EEG channels only;
+    the stim channel is untouched).&quot;&quot;&quot;
+    filtered = raw.copy().filter(BAND_LOW_HZ, BAND_HIGH_HZ, verbose=&quot;ERROR&quot;)
+    if NOTCH_HZ:
+        filtered.notch_filter(NOTCH_HZ, verbose=&quot;ERROR&quot;)
+    return filtered
+
+
+def crop_window(
+    onsets_s: np.ndarray, match: TrialMatch, duration_s: float, offsets_s: Optional[np.ndarray] = None
+) -&gt; Tuple[float, float]:
+    &quot;&quot;&quot;(start, stop) in s: 0.5 s after the video start to 1 s after its last TTL.
+
+    The video start is the first sync flash; if no sync flash was detected it is
+    placed 1.8 s before trial 0. The start never falls inside the sync flashes:
+    a slow photoresistor can merge all 5 into one long high, so when the falling
+    edges (&lt;offsets_s&gt;) are known the crop starts after that high has ended.
+    &quot;&quot;&quot;
+    times = trial_times(onsets_s, match)
+    video_start = times[0] - VIDEO_FIRST_STIMULUS_AFTER_SYNC_S
+    if match.burst is not None:
+        video_start = onsets_s[match.burst.first]
+    start = video_start + CROP_START_AFTER_VIDEO_START_S
+    if match.burst is not None:
+        sync_end = onsets_s[match.burst.last] + VIDEO_FLASH_DURATION_S
+        if offsets_s is not None:
+            later = offsets_s[offsets_s &gt; onsets_s[match.burst.last]]
+            sync_end = later[0] if len(later) else sync_end
+        start = max(start, sync_end + SYNC_END_MARGIN_S)
+    stop = min(times[-1] + CROP_END_AFTER_LAST_TTL_S, duration_s)
+    return float(start), float(stop)
+
+
+def ttl_offsets_s(raw: mne.io.BaseRaw) -&gt; np.ndarray:
+    &quot;&quot;&quot;Times (s) at which the photoresistor goes from bright back to dark.&quot;&quot;&quot;
+    ttl = raw.get_data(picks=STIM_CHANNEL)[0] &gt; 0.5
+    return np.flatnonzero(np.diff(ttl.astype(int)) == -1) / raw.info[&quot;sfreq&quot;] + raw.times[1]
+
+
+def trial_events(cropped: mne.io.BaseRaw, match_samples: np.ndarray) -&gt; Tuple[np.ndarray, np.ndarray, int]:
+    &quot;&quot;&quot;Events of the cropped recording that are video trials.
+
+    Returns (events array, trial number of each event, number of events
+    find_events reported in the crop). &lt;match_samples&gt; holds the absolute
+    sample of every detected trial (-1 = missed).
+    &quot;&quot;&quot;
+    cropped_events = find_flash_events(cropped)
+    keep = np.isin(cropped_events[:, 0], match_samples[match_samples &gt;= 0])
+    events = cropped_events[keep]
+    trial_number = np.array([int(np.flatnonzero(match_samples == s)[0]) for s in events[:, 0]], dtype=int)
+    return events, trial_number, len(cropped_events)
+
+
+def make_epochs(cropped: mne.io.BaseRaw, events: np.ndarray, tmax: float = EPOCH_TMAX_S) -&gt; mne.Epochs:
+    return mne.Epochs(
+        cropped,
+        events,
+        event_id={&quot;flash&quot;: 1},
+        tmin=EPOCH_TMIN_S,
+        tmax=tmax,
+        picks=&quot;eeg&quot;,
+        preload=True,
+        verbose=&quot;ERROR&quot;,
+    )
+
+
+def load_circle_mask(path: str) -&gt; np.ndarray:
+    mask = np.loadtxt(path, delimiter=&quot;,&quot;).astype(int).ravel()
+    if len(mask) != N_TRIALS or not set(np.unique(mask)) &lt;= {0, 1}:
+        raise ValueError(f&quot;{path} must hold {N_TRIALS} values of 0 or 1&quot;)
+    return mask
+
+
+def split_epochs(epochs: mne.Epochs, trial_number: np.ndarray, mask: np.ndarray) -&gt; Tuple[mne.Epochs, mne.Epochs]:
+    &quot;&quot;&quot;(circle epochs, square epochs); epochs MNE dropped are skipped via epochs.selection.&quot;&quot;&quot;
+    is_circle = mask[trial_number[epochs.selection]] == 1
+    return epochs[is_circle], epochs[~is_circle]
+
+
+# --------------------------------------------------------------------------
+# Step 7: z-score
+# --------------------------------------------------------------------------
+def zscore_epochs(data: np.ndarray, times: np.ndarray) -&gt; np.ndarray:
+    &quot;&quot;&quot;z = (x - mean(baseline)) / std(baseline), per epoch and channel; baseline = t &lt;= 0.&quot;&quot;&quot;
+    baseline = data[..., times &lt;= 0]
+    mean = baseline.mean(axis=-1, keepdims=True)
+    std = baseline.std(axis=-1, keepdims=True)
+    safe_std = np.where(std &gt; 0, std, 1.0)
+    # an epoch whose baseline is flat (disconnected/saturated channel) becomes all zeros
+    return np.where(std &gt; 0, (data - mean) / safe_std, 0.0)
+
+
+# --------------------------------------------------------------------------
+# Step 8: statistics
+# --------------------------------------------------------------------------
+def cluster_statistics(circles: np.ndarray, squares: np.ndarray, times: np.ndarray, n_perm: int, seed: int) -&gt; Dict:
+    &quot;&quot;&quot;Function 1 + function 2 on z-scored data, plus an independent MNE cross-check.&quot;&quot;&quot;
+    with warnings.catch_warnings():
+        warnings.simplefilter(&quot;ignore&quot;, RuntimeWarning)  # t-test of a flat channel
+        stat, clusters = lab4_stats.nonparametric_test(circles, squares, return_clusters=True)
+        pvals, null = lab4_stats.permutation_test(circles, squares, n_perm=n_perm, seed=seed, return_null=True)
+        mne_p = mne_cross_check(circles, squares, n_perm, seed)
+    fwer_p = channel_corrected_pvalues(stat, null)
+    rows = []
+    for ch, name in enumerate(CHANNEL_NAMES):
+        cluster = clusters[ch]
+        rows.append(
+            {
+                &quot;channel&quot;: name,
+                &quot;cluster_stat&quot;: float(stat[ch]),
+                &quot;cluster_start_ms&quot;: None if cluster is None else round(1000 * float(times[cluster[0]])),
+                &quot;cluster_end_ms&quot;: None if cluster is None else round(1000 * float(times[cluster[1] - 1])),
+                &quot;p_value&quot;: float(pvals[ch]),
+                &quot;p_value_mne&quot;: mne_p[ch],
+                &quot;p_value_corrected&quot;: float(fwer_p[ch]),
+                &quot;significant&quot;: bool(pvals[ch] &lt; P_THRESHOLD),
+            }
+        )
+    return {&quot;rows&quot;: rows, &quot;null&quot;: null, &quot;stat&quot;: stat, &quot;clusters&quot;: clusters, &quot;pvals&quot;: pvals}
+
+
+def channel_corrected_pvalues(observed: np.ndarray, null: np.ndarray) -&gt; np.ndarray:
+    &quot;&quot;&quot;p-values corrected for testing 8 channels (max-statistic, Maris &amp; Oostenveld section 4.4.3).
+
+    Each channel&#x27;s |statistic| is compared with the null distribution of the
+    largest |statistic| over all channels in the same random partition, which
+    controls the family-wise error rate over channels as well as time.
+    &quot;&quot;&quot;
+    max_null = np.abs(null).max(axis=1)
+    return (max_null[:, None] &gt;= np.abs(observed)[None, :]).mean(axis=0)
+
+
+def mne_cross_check(circles: np.ndarray, squares: np.ndarray, n_perm: int, seed: int) -&gt; List[Optional[float]]:
+    &quot;&quot;&quot;p-value of each channel&#x27;s largest cluster from mne.stats.permutation_cluster_test,
+    with the same threshold (|t| above the two-sided 0.05 critical value) and statistic.
+
+    MNE is given |t| with tail=1 rather than t with tail=0: with tail=0 MNE builds
+    its null distribution from the largest *signed* cluster sum of each
+    permutation, which ignores strong negative clusters and makes p too small.
+    Summing |t| over a cluster and taking the largest is exactly the two-sided
+    max-|cluster| statistic of Maris &amp; Oostenveld. MNE also counts the original
+    partition as one of the permutations, so its p is ~1/n_perm larger.
+    &quot;&quot;&quot;
+    threshold = stats.t.ppf(1 - lab4_stats.SAMPLE_ALPHA / 2, len(circles) + len(squares) - 2)
+
+    def t_stat(a: np.ndarray, b: np.ndarray) -&gt; np.ndarray:
+        return np.abs(stats.ttest_ind(a, b, axis=0).statistic)
+
+    # newer MNE renamed seed= to rng=
+    seed_kw = &quot;rng&quot; if &quot;rng&quot; in inspect.signature(mne.stats.permutation_cluster_test).parameters else &quot;seed&quot;
+    pvalues: List[Optional[float]] = []
+    for ch in range(circles.shape[1]):
+        t_obs, clusters, cluster_p, _ = mne.stats.permutation_cluster_test(
+            [circles[:, ch], squares[:, ch]],
+            threshold=threshold,
+            n_permutations=n_perm,
+            tail=1,
+            stat_fun=t_stat,
+            out_type=&quot;mask&quot;,
+            verbose=&quot;ERROR&quot;,
+            **{seed_kw: seed},
+        )
+        if len(clusters) == 0:
+            pvalues.append(None)
+            continue
+        sums = [np.nan_to_num(t_obs)[c].sum() for c in clusters]
+        pvalues.append(float(cluster_p[int(np.argmax(sums))]))
+    return pvalues
+
+
+
+
+# --------------------------------------------------------------------------
+# Driver
+# --------------------------------------------------------------------------
+def is_openbci_recording(path: str) -&gt; bool:
+    try:
+        with open(path, encoding=&quot;utf-8&quot;, errors=&quot;ignore&quot;) as handle:
+            return handle.readline().strip() == OPENBCI_FIRST_LINE
+    except OSError:
+        return False
+
+
+def find_recordings(folder: str = HERE) -&gt; Dict[str, str]:
+    &quot;&quot;&quot;Every OpenBCI GUI .txt under &lt;folder&gt; (skipping .venv, report, demo), tagged run1, run2, ...&quot;&quot;&quot;
+    found = []
+    for root, dirs, files in os.walk(folder):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        found += [os.path.join(root, f) for f in files if f.endswith(&quot;.txt&quot;) and is_openbci_recording(os.path.join(root, f))]
+    if not found:
+        sys.exit(f&quot;No OpenBCI recording (.txt starting with &#x27;{OPENBCI_FIRST_LINE}&#x27;) under {folder}.&quot;)
+    return {f&quot;run{i + 1}&quot;: path for i, path in enumerate(sorted(found))}
+
+
+def condition_summary(circles: np.ndarray, squares: np.ndarray, times: np.ndarray) -&gt; List[Dict]:
+    &quot;&quot;&quot;Peak of the circle-minus-square difference wave (z units) per channel, after 0 s.&quot;&quot;&quot;
+    diff = circles.mean(axis=0) - squares.mean(axis=0)
+    post = times &gt; 0
+    rows = []
+    for ch, name in enumerate(CHANNEL_NAMES):
+        i = int(np.argmax(np.abs(diff[ch, post])))
+        rows.append({&quot;channel&quot;: name, &quot;peak_ms&quot;: round(1000 * float(times[post][i])), &quot;peak_diff_z&quot;: float(diff[ch, post][i])})
+    return rows
+
+
+class PreparedRun(NamedTuple):
+    cropped: mne.io.BaseRaw  # filtered, cropped recording (EEG + photoresistor)
+    events: np.ndarray  # events of the video trials in &lt;cropped&gt;
+    trial_number: np.ndarray  # trial (0..89) of each event
+    info: Dict  # numbers for results.json
+
+
+def _print_match_warnings(match: TrialMatch, file_info: Dict) -&gt; None:
+    detected = match.trial_onset &gt;= 0
+    if not match.anchored:
+        print(&quot;  WARNING: no sync flash found before the trials. If trial 1 was missed, every circle/square label is&quot;)
+        print(&quot;           shifted by one trial. Check the photoresistor figure before trusting the statistics.&quot;)
+    if detected.sum() &lt; N_TRIALS:
+        print(f&quot;  WARNING: trials not detected (1-based): {[int(k) + 1 for k in np.flatnonzero(~detected)]}; they are left out.&quot;)
+    if file_info[&quot;photoresistor_inverted&quot;]:
+        print(&quot;  WARNING: D13 reads 0 when bright in this file; it was inverted.&quot;)
+    if file_info[&quot;lost_samples&quot;]:
+        print(f&quot;  WARNING: {file_info[&#x27;lost_samples&#x27;]} samples lost over the radio link.&quot;)
+
+
+def prepare_run(tag: str, recording: str, mask: np.ndarray, save_dir: str) -&gt; PreparedRun:
+    &quot;&quot;&quot;Manual steps 1-5 for one recording, plus its data-quality figures.&quot;&quot;&quot;
+    import lab4_plots
+
+    print(f&quot;[{tag}] {recording}&quot;)
+    sfreq = parse_sample_rate(recording)
+    df, file_info = load_recording(recording)
+    raw = build_raw(df, sfreq)
+    print(f&quot;  {len(df)} samples at {sfreq:g} Hz ({len(df) / sfreq:.1f} s); D13 read from &#x27;{file_info[&#x27;photoresistor_column&#x27;]}&#x27;&quot;)
+
+    events = find_flash_events(raw)
+    onsets_s = events[:, 0] / sfreq
+    raw = annotate_events(raw, events)
+    match = match_video_trials(onsets_s)
+    detected = match.trial_onset &gt;= 0
+    match_samples = np.where(detected, events[np.maximum(match.trial_onset, 0), 0], -1)
+    print(f&quot;  {len(events)} photoresistor onsets, {detected.sum()}/{N_TRIALS} trials matched&quot;)
+    _print_match_warnings(match, file_info)
+
+    filtered = bandpass(raw)
+    crop_start, crop_stop = crop_window(onsets_s, match, raw.times[-1], ttl_offsets_s(raw))
+    cropped = filtered.copy().crop(tmin=crop_start, tmax=crop_stop)
+    events_crop, trial_number, n_events_in_crop = trial_events(cropped, match_samples)
+    print(f&quot;  cropped to {crop_start:.2f}-{crop_stop:.2f} s: find_events gives {n_events_in_crop} events, {len(events_crop)} are trials&quot;)
+
+    sync_onsets = 0 if match.burst is None else match.burst.n_flashes
+    highs = run_lengths(raw.get_data(picks=STIM_CHANNEL)[0] &gt; 0.5) / sfreq
+    std_uv = cropped.get_data(picks=&quot;eeg&quot;).std(axis=1) / MICROVOLT_TO_VOLT
+    info = {
+        &quot;recording&quot;: os.path.basename(recording),
+        &quot;sfreq&quot;: sfreq,
+        &quot;n_samples&quot;: len(df),
+        &quot;duration_s&quot;: round(len(df) / sfreq, 1),
+        **file_info,
+        &quot;n_onsets_total&quot;: int(len(events)),
+        &quot;alignment_anchored&quot;: match.anchored,
+        &quot;sync_onsets_detected&quot;: None if match.burst is None else sync_onsets,
+        &quot;median_flash_ms&quot;: round(1000 * float(np.median(highs))),
+        &quot;video_start_s&quot;: round(match.video_start_s, 2),
+        &quot;n_trials_matched&quot;: int(detected.sum()),
+        &quot;missed_trials&quot;: [int(k) for k in np.flatnonzero(~detected)],
+        &quot;n_unmatched_onsets&quot;: int(len(events) - detected.sum() - sync_onsets),
+        &quot;crop_start_s&quot;: round(crop_start, 2),
+        &quot;crop_stop_s&quot;: round(crop_stop, 2),
+        &quot;n_events_in_crop&quot;: n_events_in_crop,
+        &quot;channel_std_uv&quot;: {n: round(float(s), 1) for n, s in zip(CHANNEL_NAMES, std_uv)},
+    }
+    info[&quot;flat_channels&quot;] = [n for n, s in info[&quot;channel_std_uv&quot;].items() if s &lt; FLAT_CHANNEL_STD_UV]
+
+    lab4_plots.plot_photoresistor(raw, onsets_s, match, (crop_start, crop_stop), mask, save_dir, f&quot;{tag}_photoresistor.png&quot;)
+    lab4_plots.plot_raw_with_annotations(cropped, save_dir, f&quot;{tag}_raw_annotations.png&quot;)
+    lab4_plots.plot_psd_before_after(raw, filtered, save_dir, f&quot;{tag}_psd_before_after.png&quot;)
+    return PreparedRun(cropped, events_crop, trial_number, info)
+
+
+class ConditionData(NamedTuple):
+    circles: np.ndarray  # z-scored, (n_circles, n_channels, n_times)
+    squares: np.ndarray
+    times: np.ndarray
+    circle_epochs: mne.Epochs
+    square_epochs: mne.Epochs
+
+
+def condition_data(run: PreparedRun, mask: np.ndarray, tmax: float) -&gt; ConditionData:
+    &quot;&quot;&quot;Steps 5-7: epochs (MNE defaults, tmax as given), split with the mask, z-score.&quot;&quot;&quot;
+    epochs = make_epochs(run.cropped, run.events, tmax=tmax)
+    circle_ep, square_ep = split_epochs(epochs, run.trial_number, mask)
+    times = epochs.times
+    return ConditionData(
+        zscore_epochs(circle_ep.get_data(copy=True), times),
+        zscore_epochs(square_ep.get_data(copy=True), times),
+        times,
+        circle_ep,
+        square_ep,
+    )
+
+
+def _print_test(tag: str, label: str, block: Dict, rows: List[Dict]) -&gt; None:
+    sig = &quot;, &quot;.join(block[&quot;significant_channels&quot;]) or &quot;none&quot;
+    print(f&quot;  [{tag} {label} {EPOCH_TMIN_S:+.1f}..{block[&#x27;tmax_s&#x27;]:.1f} s] {block[&#x27;n_circles&#x27;]} circles / {block[&#x27;n_squares&#x27;]} squares; p &lt; {P_THRESHOLD}: {sig}&quot;)
+    for row in rows:
+        window = &quot;-&quot; if row[&quot;cluster_start_ms&quot;] is None else f&quot;{row[&#x27;cluster_start_ms&#x27;]}..{row[&#x27;cluster_end_ms&#x27;]} ms&quot;
+        mne_p = &quot;  -  &quot; if row[&quot;p_value_mne&quot;] is None else f&quot;{row[&#x27;p_value_mne&#x27;]:.3f}&quot;
+        print(
+            f&quot;      {row[&#x27;channel&#x27;]:&gt;3}: cluster sum t = {row[&#x27;cluster_stat&#x27;]:8.2f}  {window:&gt;16}&quot;
+            f&quot;  p = {row[&#x27;p_value&#x27;]:.3f}  (MNE {mne_p}, corrected over channels {row[&#x27;p_value_corrected&#x27;]:.3f})&quot;
+        )
+
+
+def compare_conditions(tag: str, label: str, data: ConditionData, n_perm: int, seed: int, save_dir: str) -&gt; Dict:
+    &quot;&quot;&quot;Step 8 + figures for one set of circle/square epochs.&quot;&quot;&quot;
+    import lab4_plots
+
+    circles, squares, times = data.circles, data.squares, data.times
+    test = cluster_statistics(circles, squares, times, n_perm, seed)
+    block = {
+        &quot;tmin_s&quot;: EPOCH_TMIN_S,
+        &quot;tmax_s&quot;: round(float(times[-1]), 3),
+        &quot;n_epochs&quot;: len(circles) + len(squares),
+        &quot;n_times&quot;: len(times),
+        &quot;n_circles&quot;: len(circles),
+        &quot;n_squares&quot;: len(squares),
+        &quot;channels&quot;: test[&quot;rows&quot;],
+        &quot;difference_peaks&quot;: condition_summary(circles, squares, times),
+        &quot;significant_channels&quot;: [r[&quot;channel&quot;] for r in test[&quot;rows&quot;] if r[&quot;significant&quot;]],
+        **sample_wise_counts(circles, squares),
+    }
+    add_cluster_microvolts(block[&quot;channels&quot;], test[&quot;clusters&quot;], data)
+    prefix = f&quot;{tag}_{label}&quot;
+    lab4_plots.plot_evoked_grid(circles, squares, times, test, f&quot;{prefix}_erp_all.png&quot;, save_dir)
+    lab4_plots.plot_significant(circles, squares, times, test, f&quot;{prefix}_erp_significant.png&quot;, save_dir)
+    lab4_plots.plot_null_distributions(test, f&quot;{prefix}_null.png&quot;, save_dir)
+    _print_test(tag, label, block, test[&quot;rows&quot;])
+    return block
+
+
+def sample_wise_counts(circles: np.ndarray, squares: np.ndarray) -&gt; Dict:
+    &quot;&quot;&quot;How many (channel, time) samples a plain t-test calls significant, uncorrected
+    and Bonferroni-corrected: the multiple comparisons problem in numbers.&quot;&quot;&quot;
+    with warnings.catch_warnings():
+        warnings.simplefilter(&quot;ignore&quot;, RuntimeWarning)
+        p = stats.ttest_ind(circles, squares, axis=0).pvalue
+    return {
+        &quot;n_tests&quot;: int(p.size),
+        &quot;uncorrected_samples&quot;: int(np.sum(p &lt; lab4_stats.SAMPLE_ALPHA)),
+        &quot;bonferroni_samples&quot;: int(np.sum(p &lt; lab4_stats.SAMPLE_ALPHA / p.size)),
+    }
+
+
+def add_cluster_microvolts(rows: List[Dict], clusters: Sequence, data: ConditionData) -&gt; None:
+    &quot;&quot;&quot;Adds to every row the circle-minus-square difference (uV) averaged over its largest cluster.&quot;&quot;&quot;
+    circle_uv = data.circle_epochs.get_data(copy=True).mean(axis=0) / MICROVOLT_TO_VOLT
+    square_uv = data.square_epochs.get_data(copy=True).mean(axis=0) / MICROVOLT_TO_VOLT
+    for ch, (row, cluster) in enumerate(zip(rows, clusters)):
+        if cluster is None:
+            row[&quot;cluster_diff_uv&quot;] = None
+            continue
+        window = slice(cluster[0], cluster[1])
+        row[&quot;cluster_diff_uv&quot;] = round(float((circle_uv[ch, window] - square_uv[ch, window]).mean()), 1)
+
+
+def pool(datasets: Sequence[ConditionData]) -&gt; ConditionData:
+    &quot;&quot;&quot;Epochs of several runs of the same subject, concatenated per condition.&quot;&quot;&quot;
+    return ConditionData(
+        np.concatenate([d.circles for d in datasets]),
+        np.concatenate([d.squares for d in datasets]),
+        datasets[0].times,
+        mne.concatenate_epochs([d.circle_epochs for d in datasets], verbose=&quot;ERROR&quot;),
+        mne.concatenate_epochs([d.square_epochs for d in datasets], verbose=&quot;ERROR&quot;),
+    )
+
+
+WINDOWS = ((&quot;main&quot;, EPOCH_TMAX_S), (&quot;extended&quot;, EXTENDED_TMAX_S))
+
+
+def analyse(
+    recordings: Dict[str, str],
+    save_dir: str,
+    results_path: str,
+    n_perm: int = N_PERMUTATIONS,
+    seed: int = RANDOM_SEED,
+    is_demo: bool = False,
+) -&gt; Dict:
+    &quot;&quot;&quot;Every recording on its own and, if there are several, all of them pooled.&quot;&quot;&quot;
+    import lab4_plots
+
+    os.makedirs(save_dir, exist_ok=True)
+    mask = load_circle_mask(os.path.join(HERE, CIRCLE_MASK_FILE))
+    results: Dict = {&quot;is_demo&quot;: is_demo, &quot;n_permutations&quot;: n_perm, &quot;seed&quot;: seed, &quot;notch_hz&quot;: NOTCH_HZ, &quot;runs&quot;: {}, &quot;pooled&quot;: None}
+    per_window: Dict[str, List[ConditionData]] = {label: [] for label, _ in WINDOWS}
+
+    for tag, recording in recordings.items():
+        run = prepare_run(tag, recording, mask, save_dir)
+        results[&quot;runs&quot;][tag] = dict(run.info)
+        for label, tmax in WINDOWS:
+            data = condition_data(run, mask, tmax)
+            per_window[label].append(data)
+            results[&quot;runs&quot;][tag][label] = compare_conditions(tag, label, data, n_perm, seed, save_dir)
+            if label == &quot;main&quot;:
+                lab4_plots.plot_mne_evoked(data.circle_epochs, data.square_epochs, save_dir, f&quot;{tag}_evoked_microvolts.png&quot;)
+
+    if len(recordings) &gt; 1:
+        print(f&quot;[pooled] {&#x27;, &#x27;.join(recordings)}&quot;)
+        results[&quot;pooled&quot;] = {}
+        for label, _ in WINDOWS:
+            data = pool(per_window[label])
+            results[&quot;pooled&quot;][label] = compare_conditions(&quot;pooled&quot;, label, data, n_perm, seed, save_dir)
+            if label == &quot;main&quot;:
+                lab4_plots.plot_mne_evoked(data.circle_epochs, data.square_epochs, save_dir, &quot;pooled_evoked_microvolts.png&quot;)
+
+    with open(results_path, &quot;w&quot;, encoding=&quot;utf-8&quot;) as handle:
+        json.dump(results, handle, indent=2)
+    print(&quot;Figures in&quot;, save_dir, &quot;| numbers in&quot;, results_path)
+    return results
+
+
+def main(argv: Optional[Sequence[str]] = None) -&gt; Dict:
+    parser = argparse.ArgumentParser(description=__doc__.split(&quot;=====&quot;)[0], formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument(&quot;recordings&quot;, nargs=&quot;*&quot;, help=&quot;OpenBCI GUI .txt files (default: RECORDING_FILES, else auto-detect)&quot;)
+    parser.add_argument(&quot;--demo&quot;, action=&quot;store_true&quot;, help=&quot;analyse a synthetic recording instead&quot;)
+    parser.add_argument(&quot;--n-perm&quot;, type=int, default=N_PERMUTATIONS)
+    args = parser.parse_args(argv)
+
+    if args.demo:
+        import lab4_synthetic
+
+        path = os.path.join(HERE, &quot;demo&quot;, &quot;OpenBCI-RAW-demo.txt&quot;)
+        lab4_synthetic.write_recording(path)
+        recordings = {&quot;run1&quot;: path}
+    elif args.recordings:
+        recordings = {f&quot;run{i + 1}&quot;: path for i, path in enumerate(args.recordings)}
+    elif RECORDING_FILES:
+        recordings = {tag: os.path.join(HERE, path) for tag, path in RECORDING_FILES.items()}
+    else:
+        recordings = find_recordings()
+    return analyse(
+        recordings,
+        os.path.join(HERE, SAVE_DIR),
+        os.path.join(HERE, RESULTS_FILE),
+        n_perm=args.n_perm,
+        is_demo=args.demo,
+    )
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>
+
+</body>
+</html>
